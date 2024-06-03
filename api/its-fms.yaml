@@ -2000,7 +2000,7 @@ components:
           - vehicleId
         properties:
           messageType:
-            type: text
+            type: string
             example: TIMESTAMP_MESSAGE
           vehicleId:
             allOf:
@@ -2023,7 +2023,7 @@ components:
           - vehicleId
         properties:
           messageType:
-            type: text
+            type: string
             example: TIMESTAMP_MESSAGE
           vehicleId:
             allOf:
@@ -2046,7 +2046,7 @@ components:
           - vehicleId
         properties:
           messageType:
-            type: text
+            type: string
             example: LOCATION_UPDATE
           vehicleId:
             allOf:
@@ -2069,7 +2069,7 @@ components:
           - vehicleId
         properties:
           messageType:
-            type: text
+            type: string
             example: ERROR_MESSAGE
           vehicleId:
             allOf:
@@ -2092,7 +2092,7 @@ components:
           - vehicleId
         properties:
           messageType:
-            type: text
+            type: string
             example: ERROR_MESSAGE
           vehicleId:
             allOf:
@@ -2323,7 +2323,7 @@ components:
           - vehicleId
         properties:
           messageType:
-            type: text
+            type: string
             example: EVENT_MESSAGE
           vehicleId:
             allOf:
@@ -2369,7 +2369,7 @@ components:
           - vehicleId
         properties:
           messageType:
-            type: text
+            type: string
             example: EVENT_MESSAGE
           vehicleId:
             allOf:
@@ -2412,7 +2412,7 @@ components:
           - vehicleId
         properties:
           messageType:
-            type: text
+            type: string
             example: EVENT_MESSAGE
           vehicleId:
             allOf:
@@ -2441,7 +2441,7 @@ components:
                     type: object
                     properties:
                       eventText:
-                        type: text 
+                        type: string 
                         example: Traffic Light Status 31396.531.A2.S3
                       location:
                         allOf:
@@ -2469,7 +2469,7 @@ components:
           - vehicleId
         properties:
           messageType:
-            type: text
+            type: string
             example: EVENT_MESSAGE
           vehicleId:
             allOf:
@@ -2498,7 +2498,7 @@ components:
                     type: object
                     properties:
                       eventText:
-                        type: text 
+                        type: string 
                         example: Traffic Light Timing 31396.531.A2.S3
                       location:
                         allOf:
@@ -2526,7 +2526,7 @@ components:
           - vehicleId
         properties:
           messageType:
-            type: text
+            type: string
             example: EVENT_MESSAGE
           vehicleId:
             allOf:
@@ -2555,7 +2555,7 @@ components:
                     type: object
                     properties:
                       eventText:
-                        type: text
+                        type: string
                         example: Priority 31398.61
                       location:
                         allOf:
@@ -2582,7 +2582,7 @@ components:
           - vehicleId
         properties:
           messageType:
-            type: text
+            type: string
             example: EVENT_MESSAGE
           vehicleId:
             allOf:
@@ -2611,7 +2611,7 @@ components:
                     type: object
                     properties:
                       eventText:
-                        type: text 
+                        type: string 
                         example: Lane configuration
                       location:
                         allOf:
@@ -2639,7 +2639,7 @@ components:
           - vehicleId
         properties:
           messageType:
-            type: text
+            type: string
             example: EVENT_MESSAGE
           vehicleId:
             allOf:
@@ -2668,7 +2668,7 @@ components:
                     type: object
                     properties:
                       eventText:
-                        type: text 
+                        type: string 
                         example: Tire pressure information
                       location:
                         allOf:
