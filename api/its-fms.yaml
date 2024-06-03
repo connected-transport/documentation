@@ -1,0 +1,2875 @@
+openapi: 3.1.0
+info:
+    title: "ITS-FMS Interface"
+    contact: 
+      name: Ministry of Infrastructure and Waterworks
+      email: support@movingit.nl
+    version: 2.1.0
+    description: |
+       ![Figure1](assets/intro.png)
+       
+       # Introduction
+       The ITS-FMS Interface is defined as an standard for communication between logistic IT-suppliers (FMS) wanting to integrate Intelligent Transport Systemsservices and ITS cloud service providers (CSP) that offer the required services. 
+       These services consist of usefull real time traffic and infrastucture events that are relevant on the current route of the truck.
+              
+       The interface is an implementation of the [Open Trip model 5.0](https://otm5.opentripmodel.org/), an open standard for communication about logistics and traffic.
+       It has been developed with and already implementated by several marked companies with support of the dutch government. 
+       All certified cloud service providers that have access to the relevent data, have to provide their services following this standard.
+       The main goal is to make implementation of these services easy as possible for all software suppliers in the logistics marked, to make the traffic flow more smooth, predictable and save for everyone.
+       
+       ## Scope and objective ITS-FMS interface
+       With the ITS-FMS interface, a set of C-ITS use cases, based on the use cases defined by the Talking Traffic project, are being linked to logistics IT-systems (such as Fleet Management Systems), with a specific focus towards logistics operators. The set of use cases involve:
+        - Smart traffic jam warnings;
+        - Road hazard warnings;
+        - Early warning messages from emergency and rescue services;
+        - Information provision from intelligent traffic light controllers (iTLC, Dutch: “iVRI”)
+        - Priority allocation by iTLC’s;
+        - Provisioning of information from variable message signs above the road;
+        - ...
+                                
+       This set of applications is characterized by low-latency services that make use of cellular communication services. They are called ITS (intelligent transport systems) services within this context and form the scope of what is specified in this document.
+   
+       Currently, on the Connected Transport Corridors, several of these ITS services are already provided in-truck via a mobile wireless data connection via stand-alone smartphone apps, which communicate the route and position of the truck directly to a cloud service provider. This ITS-FMS interface description is aimed at the same kind of information services, however, using the already deployed in-vehicle devices in the trucks that are managed by so called FMS, Fleets Management Systems. These in-vehicle devices may range from build-in on-board units to tablets or smartphones.
+
+       ## Target group of this document
+       This document is intended for logistics IT-suppliers wanting to integrate Intelligent Transport Systems-services, as well as  the ITS Cloud Service Providers that offer their services, supporting the use cases,. The document is a technical key specification that is used for the connection between the Fleet Management Systems and the Cloud Service Providers.
+       
+       We have created demo applications speed up development of implementing the Standard ITS-FMS Interface for connected transport.
+       
+       ## Demo code
+       The demo has the following functionalities:
+        - onBoard
+        - open websocket connection
+        - receive messages
+        - send messages
+        
+       The demo shows the complete interface flow from step 1 untill step 6, but does not contain examples of how to use incoming data in an GUI for example. 
+       Messages send and received are all displayed as JSON messages in an console.
+       This could be a good starting point to immplement this interface in your own development environment
+
+       You can download, use, adjust and improve this code any way you want. 
+       Any remarks, adustments or improvements to this demo code are always welcome. Let's all help to speed up the adoption of connected transport!
+
+       We have created different projects/repo's with the same demo, but in different programming languages:
+
+       [C#:](https://github.com/svendrig/connected_transport/tree/main/c%23), created with visual studio
+       
+       [Java:](https://github.com/svendrig/connected_transport/tree/main/java), created with Eclipse
+      
+       ## References
+       The following references are used for this documentation:
+        - [Open Trip Model documentation](https://www.opentripmodel.org)
+        - [CROW standards on C-ITS](https://www.crow.nl/thema-s/verkeersmanagement/landelijke-ivri-standaarden)
+        - [JSON standards](https://www.json.org)
+        - [Protobuf](https://developers.google.com/protocol-buffers)
+        
+       ## Abbreviations
+       The following abbreviations are used in this documentation:
+        - API = Application Programming Interface
+        - C-ITS = Cooperative Intelligent Transport Systems
+        - CSP = (ITS) Cloud Service Providers
+        - FMS = Fleet management system 
+        - ITS = Intelligent Transport Systems
+        - iVRI = intelligente VerkeersRegelInstallatie (intelligent Traffic Light Controller)
+        - JSON = JavaScript Object Notation
+        - OBU = On Board Unit
+        - OTM = Open Trip Model
+        - REST = Representational state transfer
+        - UDAP = Urban Data Access Platform
+                       
+tags:
+  - name: High level architecture
+    x-displayName: High level architecture
+    description: |
+      In the diagram below, a high-level architecture can be found between the ITS Cloud Service Providers and FMS-providers:
+      ![Figure1](assets/figure_1.png)       
+      _Figure 1: High Level architecture of CSP and FMS ecosystem – the ITS-FMS interface is situated between Cloud Service Provider and the Fleet Management System as information providers (indicated by a red dashed circle)_
+       
+      To implement the various use cases both some static and dynamic data is needed. For the static data (vehicle and route) an Open Trip Model (see details in 3.2) specification over a REST interface is used. However, for the dynamic data (ITS events, positions, control messages) it was deemed that the OTM definition was not suitable. For the dynamic data, WebSockets are used over which Google Protocol Buffer messages (proto3) are exchanged.
+      When implementing this ITS-FMS interface, the CSP will be setting up endpoints for both types of connections.
+       
+      ![Figure2](assets/figure_2.png)       
+      _Figure 2: 2 Interface implementation options: 1 via FMS backend (upper image), 2. directly from the FMS onboard unit (middle image), 3. hybrid (lower image)_
+       
+      For the FMS-systems, there are various implementation options:
+        - ITS CSP Backend – Back office (FMS backend implementation)
+        - ITS CSP Backend – Direct to vehicle (direct client implementation)
+        – REST API via Backoffice and WebSocket directly via truck
+
+      It is up to the logistics IT-supplier to decide whether the communication takes place directly from the client or via a backend. In the latter case, the FMS-party must make sure that the required latency demands are met. Both options have already been tested in practice and each offer their own set of advantages and disadvantages. 
+      
+  - name: Communication types
+    x-displayName: Two different types of communication
+    description: |
+      The interface consists of two types of communication
+        - JSON over https (REST) 
+        - Protocol Buffers over websocket (wss)
+         
+      Static data (vehicle and route) are shared over a REST API interface. But for the dynamic data high frequency, low latency requirements and bidirectional communication make this not suitable.
+      Therefore WebSockets are used over which Google Protocol Buffer messages (proto3) are exchanged.
+              
+      Please be aware that in this documentation all definitions are in JSON, and look like REST API call's but for the realtime messages this only has been done for readability.
+      You have to parse incoming data from the websocket connection to objects in your code with the google.protobuf library available for your development environment. If that object is serialized to JSON the messages are conform this documentation.   
+      For outgoing messages you have to parse created objects to protobuf in stead of serialize it to JSON with the same library:
+      [Protobuf](https://github.com/protocolbuffers/protobuf?tab=readme-ov-file#protobuf-runtime-installation)
+       
+  - name: Authentication
+    x-displayName: Authentication
+    description: |   
+      Authentication for each interface will use Bearer tokens for authentication and SSL (TLS) to encrypt in-flight data.
+
+      For Authentication and access to an test environment you need to contact an certified cloud service provider:
+      They will share an api_key for both, the REST and Websocket communication.
+       
+  - name: Authorization
+    x-displayName: Authorization
+    description: |     
+      The authorization of FMS parties to subscribe to ITS services from ITS Cloud Service Providers is not part of this technical description. 
+      The authorization should be described in a separate bilateral contract between each FMS and CSP party.
+
+  - name: Interface Flow
+    x-displayName: Interface Flow
+    description: |     
+      - Step 1: Announce vehicle with REST API call
+      - Step 2: Announce route with REST API call (Only required when iVRIPriorityEnabled in the Vehicle request is true)
+      - Step 3: Open 1 websocket connection over wss for each vehicle
+      - Step 4: Start communication in protobuf over websocket connection by sending an first location update
+      - Step 5: Respond in time on timstamp requests to keep connection open and keep sending location updates conform requirements
+      - Step 6: Receive realtime event messages, from CSP and implement this in your application   
+        
+    Note: If no activity is detected on an open WebSocket during 5 minutes, the CSP will close the connection.
+  
+  - name: Event codes
+    x-displayName: Event codes
+    description: |
+      Within the ITS-FMS interface various use cases are supported. To clearly define what data fields need to be filled for specific use cases, each use case was assigned a, so called, ITSEventCode. These ITSEventCodes are also used in the Protobuf definition to identify what fields need to be filled for a specific use case.
+      
+      Special messages:
+        - UNKNOWN_ITS_EVENT_CODE = Unknown ITS event code (000)
+        - CHANGED_FREQUENCY_REQUEST = requency requested to change to X Hz (001) 
+
+      Signaling and speed advice: 
+        - MAXIMUM_SPEED = Maximum allowed speed of x km/h (101)
+        - ADVISORY_SPEED_LIMIT = Advised speed of x km/h (102)
+        - OVERTAKING_BAN  = Overtaking prohibited (103)
+        - LANE_CONFIGURATION = Lane configuration changed (104)
+
+      Information about dangerous situations:
+        - ROAD_WORKS = Road works ahead (201)
+        - EVENTS = Event ahead (202)
+        - PLACEHOLDER = Rail Level crossings, Placeholder (203)
+        - TRAFFIC_JAM = Start of traffic jam, Traffic jam ahead (204)
+        - STATIONARY_VEHICLE = Stationary vehicle ahead (205)
+        - INCIDENT = Incident ahead (206)
+        - WEATHER_CONDITIONS = Bad weather conditions ahead (207)
+        - OBJECTS_ON_ROAD = Objects/cargo on the road (208)
+        - EMERGENCY_VEHICLE_APPROACHING = Approaching emergency services (early warning) (209)
+        - ROAD_INSPECTOR = Road inspector on the road (210)
+        - BRIDGE_OPENING = Open bridge ahead (211)
+        - GHOST_DRIVER_WARNING  = Ghost driver approaching (212)
+
+      Priority with iVRI:
+        - PRIORITY = Priority status update (301)
+        - SELECTIVE_ACCESS = Selective access systems (bollards, etc.), placeholder (302)
+
+      Current information iVRI:
+        - TRAFFIC_LIGHT_STATUS = Traffic light status update (401)
+        - TRAFFIC_LIGHT_TIMING = Time to green and time to red, traffic light timing update (402)
+        - ADVISORY_SPEED  = Traffic light optimal speed advice (403)
+        - RAIL_CROSSING_STATUS = Rail Level crossing time to open, placeholder (404)
+
+      Sensor data:
+        - TIRE_PRESSURE_GAUGE = Tire pressure information (501)
+        - ALTIMETER = Vehicle height information (502)
+        - WEIGHT = Vehicle weight information (503)
+        - PARKING_OCCUPATION = Parking + loading/unloading area (occupation), placeholder (504)
+        - PARKING_RESERVATION = Parking + loading/unloading area (reservation), placeholder (505)
+      
+      Note: Not every CSP supports all these events/use cases, please contact your CSP for availability of each of these events
+      
+  - name: Dynamic sampling      
+    x-displayName: Dynamic sampling
+    description: |
+      To reduce the amount of location updates required, dynamic sampling can be used. An FMS-party can turn dynamic sampling on or off via the OTM-interface, see 3.2. With dynamic sampling the CSP sends a “Changed frequency request” each time a new update interval is desired. Intervals can range between 1 and 60 seconds. An FMS-party is allowed to keep on sending updates more frequently, although updates within 100 ms of the last processed update will be discarded by the CSP.
+      It is advisable that the FMS-party sends an additional location update when the speed of the vehicle changes significantly (in general if the speed increases or decreases more than 15 km/h since the last update).
+  
+  - name: Timestamps in locationUpdateEvent      
+    x-displayName: Timestamps in locationUpdateEvent
+    description: |
+      Since GPS-positioning is based on very accurate time measurements, it is assumed that location updates from the vehicle are containing a timestamp that is fully synchronized. During earlier testing, however, it was noticed that this is not true for all types of devices used. Therefore, the location update message also must contain the timestamp of the local clock of the device at the moment the GPS-update was received. If the CSP detects a location update that deviates more than 1 second of the current time, a check is performed whether the device date after time correction is within the 1 second error interval. If so, the latter timestamp is used.
+    
+  - name: GPS Accuracy      
+    x-displayName: GPS Accuracy
+    description: |
+      The quality of GPS coordinates is crucial for the CSP to send accurate and relevant event messages, Therefore each locationUpdate should contain the gps_quality. The value presents the deviation in meters with 95% probability. 
+      For the iVRI priority use case this value is required. For this use case the CSP should have the possibility to map these coordinates into an existing planned route. Too much deviation to an planned route causes that the CSP won’t request for priority.
+ 
+  - name: Inactivity monitoring    
+    x-displayName: Inactivity monitoring
+    description: |
+      If no activity is detected on an open WebSocket during 5 minutes, the CSP will close the connection.
+           
+  - name: Use case specific functionality    
+    x-displayName: Use case specific functionality
+    description: |
+      #	Maximum speed
+      The maximum speed information should not show the traffic signs along the road, but the vehicle-specific information at the moment in time.               
+
+      # Priority at traffic lights
+      In order to be able to request priority at a smart traffic light (iVRI) it is mandatory that the route of the vehicle is known. A request for priority is sent by the CSP in advance to one or more traffic lights on the route. 
+      To make the processing for the FMS parties easier, the CSP may choose to buffer priority responses of downstream traffic lights. In this case only corresponding event messages with the latest status of the priority request for the traffic light that the vehicle is currently approaching will be sent.
+      The status is presented by an string (free text) value but should contain one of these values:
+              
+      Normal flow of PRIORITY even statusses is:
+        - requested
+        - processing
+        - granted
+        - cancelled (when priority status information may not be displayed to the enduser anymore)   
+             
+      Status types from Dutch SSM Profile:
+        - unknown = Unknown state
+        - requested = This prioritization request was detected by the traffic controller
+        - processing = Checking request (request is in queue, other requests are prior)
+        - watchOtherTraffic = Cannot give full permission, therefore watch for other traffic Note that other requests may be present
+        - granted = Intervention was successful and now prioritization is active
+        - rejected = The prioritization or pre-emption request was rejected by the traffic controller
+        - maxPresence = The Request has exceeded maxPresence time. Used when the controller has determined that the requester should then back off and request an alternative.
+        - reserviceLocked = Prior conditions have resulted in a reservice locked event: the controller requires the passage of time before another similar request will be accepted
+      
+      The values with source iVRI are defined by Dutch SSM profile (level 2.7 - status field), for latest details check [https://www.CROW.nl](https://www.CROW.nl/). The other values are added by CSP for more information.
+                
+      Other status types are optional for each CSP:
+        - cancelled = After passing the stopline
+        - noAnswer = No response from iVRI within 1 second 
+        - wrongSeqNo = Wrong response from iVRI (sequence number incorrect)
+        - maxEtaExceeded = ETA missing, or >5 minutes in the future
+        - noRoute = Cannot find matching route 
+        - noPbcMatch = No configuration for route and vehicle
+                
+      The last options where added by soe of the CSP's to give the FMS more information why an priority request could not be made.
+      
+      Note: Failed priority request will not result in error messages, but are explaind by this status element 
+              
+      # Lane configuration
+      Per lane an ITS event message with information of the variable message sign is send. For vehicles the nearest upstream variable message sign (behind the vehicle) is of interest since it defines the current maximum speed and lanes that are allowed to be used, as well as the downstream variable message signs (in front of the vehicle) to anticipate upcoming changes. A CSP is not obliged to send variable message sign information if all signs are blank but can decide to do so. Also, note that for lane indication, the lane number is counted left to right. The maximum speed variable should contain the value that is displayed on the variable message sign, and not the vehicle-specific maximum speed. For the vehicle-specific maximum speed a separate MAXIMUM_SPEED event will be send (2.6.1).
+
+      # Tire pressure sensor
+      The current tire pressure sensors detect anomalies by analyzing the tread and footprint of a tire. In case anomalies are detected the specific location (axle number and left/right indication) of the anomalies and the type of anomaly (suspect or flat) is presented. The worst case of all detected anomalies is then presented as the overall status. Note, that for unloaded / lightly loaded vehicles a status OK does not necessarily indicate good tire pressure and therefore should not be presented as such to the driver.           
+
+  - name: Technical architecture
+    x-displayName: Technical architecture
+    description: |
+      As can be seen in [Figure 2](#tag/High-level-architecture), the FMS and CSP instances will interact through two defined interfaces: a REST interface with Open Trip Model (OTM) messages and a WebSocket interface with Protocol Buffers messages. 
+      
+      The REST API interface is defined to exchange the necessary vehicle and route information to request priority, enable the ITS use cases and perform event matching in the CSP backends.
+      
+      The WebSocket interface allows for bi-directional and asynchronous communication between the CSP backends and FMS-parties. This way, control messages, ITS event messages and location/position update messages can be exchanged in a (near) real-time manner to facilitate the C-ITS use-cases defined in Table 1. As can be seen, no IPSEC or VPN tunnelling will be used in this architecture, allowing easier onboarding of FMS-parties and faster setups. To still provide the necessary security, each interface will use Bearer tokens for authentication and SSL (TLS) to encrypt in-flight data.
+
+  - name: The OTM REST-interface
+    x-displayName: The OTM REST-interface
+    description: |
+      As previously stated, the OTM REST interface is used to interchange all necessary vehicle and route information between the FMS parties and CSP providers. The implementation consists of the regular Open Trip Model (https://otm5.opentripmodel.org/) with the following additions and alterations:
+        
+          
+        - To support the C-ITS use-cases defined in Table 1, only the following REST models/endpoints need to be supported by the Cloud Service Providers, all other endpoints are not necessary for support C-ITS use-cases:
+          - [Vehicle](https://otm5.opentripmodel.org/#tag/Vehicle)
+          - [Route](https://otm5.opentripmodel.org/#tag/Route)
+          - [Event](https://otm5.opentripmodel.org/#tag/Event) (except locationUpdateEvent)
+          
+        - While these endpoints allow the Cloud Service Providers to extract all necessary information for the iVRI priority use-cases, the CSP still needs to be informed when a certain vehicle is allowed to request priority. If such information is not provided, filtering cannot be done. This would give unauthorized vehicles the possibility to request priority. This is a safety issue that is mitigated by adding an extra mandatory iVRIPriorityEnabled field to the OTM Vehicle’s externalAttributes object. The FMS-providers will be responsible for determining whether a certain OTM vehicle is rightfully allowed to request priority based on extra route or internal back office information.  The FMS-providers will change the priority state by performing an updateEvent operation and altering the iVRIPriorityEnabled field to reflect the current allow/disallow state. Once such a PUT call is performed, the CSP backends need to immediately process this priority state change and start or stop priority request flows for the given vehicle.
+          
+          Note that it is the Cloud Service Provider who checks all the requirements set out in the Priority Broker Configurator. However, the FMS-party has additional information on working hours for example (from the digital tachograph), which can be used to mitigate the risk of misuse of the OBU system 
+        - The interface allows the FMS-party to work in two different ways in providing position updates: 
+            - at a fixed 1 Hz interval, 
+            - or dynamically where the CSP is requesting the desired sample interval depending on the current location of the vehicle. 
+          
+          To communicate the desired operational mode, the OTM vehicle externalAttributes was extended with the additional property dynamicRate which can be true (dynamic location updates) or false (1 Hz updates).
+        
+        - For route information the following additional rules apply:
+          - To relate a route to a specific vehicle, an Actor must be specified. To avoid ambiguity only a reference is allowed to a vehicle.
+        
+        - Open Trip Model supports multiple geo-reference methods, only latLonArrayGeoReference  and addressGeoReference are supported by the ITS-FMS interface.  
+        
+        - For an optimal working of the route information the following advices apply:
+          - A route is normally stored / used for the next 12 hours, unless specific timestamps are specified in the startTime and endTime of Actions in the route. When startTime and EndTime are defined, the route is only active between these times.
+          - Therefore it is advised always to use the DELETE Route api call to remove an completed or cancelled existing route first before adding a new or changed route. This is to avoid there are multiple active routes for the same truck.
+        
+        - The latLonArrayGeoReference is the preferred option. When the addressGeoReference geo-reference method is used the CSP will determine the route coordinates.  
+        
+        - The more detailed the route is (number of geoReferences), the more accurate the Cloud Service Provider can provide route specific events. At least two geoReferences (start and endlocation of a route) are required
+        
+        - When only one addressGeoReference entry is added, it is assumed to be the destination. The ITS Cloud Service Provider will determine the route coordinates to the destination.
+        
+        - The UUID in the Open Trip Model is handled as a string.
+        
+        - The cleaning frequency can be different for ITS Cloud Service Provider. With a minimum frequency of once per 24 hour.  
+      
+      # Implementation of OTM interface 
+      The object and endpoint specifications are in line with the OTM specifications. Any additions to support the priority requests at intelligent traffic lights and dynamic rate setting for position polling are included in the OTM externalAttributes field, and therefore still OTM compliant. 
+      
+      Furthermore, the interface itself is protected by a Token Based authentication system where a Pre-Shared-Key (PSK) API-key is provided to the FMS provider. This API key needs to be added as a Bearer token to all http requests to the OTM interface and to the WebSocket. For encryption, TLS V1.3 will be used to protect the in-flight messages from Man-In-The-Middle attacks. Each Cloud Service Provider will provide a unique base URL on which the OTM endpoints ({baseUrl}/api/v5/) and WebSockets ({baseUrl}/ws) will be provided.
+      
+  - name: The WebSocket interface with Protobuf messages
+    x-displayName: The WebSocket interface with Protobuf messages
+    description: |
+      # Functional description
+      For the WebSocket communication [Protocol Buffer messages](https://cloud.google.com/apis/design/proto3) (Protobuf for short) are used, because it is a free and open-source cross-platform data format that can be serialized in a compact way (reducing data transmission and bandwidth requirements), it is extendable, and code generators for various computer languages (varying from C#, C++, Java, Javascript, Python and others) are available. The general Protobuf model is constructed in such a way that all use cases can be provided by one data structure. Some fields are required for every use case as other fields are only requested in some use cases. The payload of the message and the required fields for every use case are documented in the Protobuf specification.
+      
+      The WebSocket (secure) interface is used for all (near) real-time communication. 
+      The following message types are sent across the WebSocket:
+        - OTM locationUpdateEvents: The FMS-party will provide locationUpdateEvents of each individual vehicle over one unique WebSocket connection per vehicle. The location updates must be sent as a stream and not in batch to support the real-time character of the C-ITS ecosystem. A default rate of 1 locationUpdateEvent per 5 seconds (0.2 Hz) is required for each individual vehicle to be able to react to real-time event updates in a timely manner.
+        
+        - ITS Event Messages: The CSP will send these messages that contain all relevant ITS event information for a specific vehicle. The detailed event specifications can be found in chapter 2
+        
+        - Control Messages: The control messages are used by the CSP backends to dynamically increase and decrease the locationUpdateEvent rates of individual vehicles when the dynamicRate option is used. This is to be in compliance with Talking Traffic requirements which dictate that each vehicle in the vicinity of an iVRI needs to send its position at least once every second (1 Hz) in order for the iVRI to be able to dynamically update its timing and optimize the traffic flow. Besides the position rate messages, some route tracking control messages can be sent from the Cloud Service Provider to the FMS providers. These can be used to indicate when a vehicle seems to be diverting from its predefined route according to the CSP backend. If such an event occurs, the traffic light priority use-case might not work correctly until the route coincides with the actual trajectory of the vehicle. The FMS party can use this control message to check and possibly recalculate the route of the vehicle.
+        
+        - Timesync Messages: messages needed to sync time across CSP and FMS systems (see section 3.4)
+      
+      # General Protobuf model
+      For the WebSocket interface the proto3 standard is used. The chosen message structure basically consists of a wrapper identifying the message type, the ID of the related vehicle and the actual content. The basic structure is depicted in Figure 3. Depending on the type of event message, one or more (sub)containers will be filled, which is documented in the Protobuf specification.
+      
+      ![Figure1](assets/figure_3.png)       
+      _Figure 3 General Protobuf structure_
+      
+      Note the above classes diagram can be automatically generated with the Protobuf schema in an integrated development environment (IDE). Additional information about a certain message (such as whether fields within the messages are integers, strings, floats, etc.) can be shown, by extending or collapsing information. 
+
+      # Technical information of interface
+      Each FMS party will have a single WebSocket connection per vehicle with a Cloud Service Provider of choice which exposes a WebSocket endpoint on the same URL as the OTM interface with the /ws path. Since the socket will exchange multiple message types over a single channel, an encapsulation message is added which allows for more optimal unmarshalling and message routing operations.
+      
+      Just like the OTM interface, the WebSocket interface is also protected using a Bearer token containing the same Pre-Shared-Key (PSK). Encryption of in-flight data will be done using SSL encryption using TLS V1.3. 
+      
+      The encapsulation message will be encoded with the Protobuf protocol.
+      
+      
+  - name: Time synchronisation
+    x-displayName: Time synchronisation
+    description: |
+      It is important that all connected systems have their times properly synchronized. To determine if this is indeed the case, the CSP will regularly (typically every minute) send a timestamp request. The FMS-party should respond with a timestamp response message as quickly as possible. If the average time difference between an FMS and CSP consistently exceeds 3 seconds (or no response is received within 3 seconds), the CSP will send an error message. 
+   
+      For both a request and response a similar timestamp message is used, only the number of fields that are filled differ. A timestamp message contains the following fields: requestTransmission (filled by the requesting CSP), requestReception (filled upon receipt of the request by the FMS) and responseTransmission (filled when the response is transmitted by the FMS).
+    
+      ![Figure1](assets/figure_4_1.png)       
+      _Figure 4.1 Example of a TimestampMessage response (after conversion to json)_
+    
+      ![Figure1](assets/figure_4_2.png)       
+      _Figure 4.2 TimestampMessage flow_
+      
+  - name: FMS connecting with CSP for first time
+    x-displayName: FMS connecting with CSP for first time
+    description: |
+      ![Figure1](assets/figure_5_1.png)       
+      _Figure 5.1 FMS connecting with CSP for first time_
+       
+      Upon connection from an FMS to a CSP, the vehicle info needs to be injected into the CSP database. An example of such a body (conforming to the specs in paragraph 3.2) is provided in Figure 5.
+      
+      ![Figure1](assets/figure_5_2.png)       
+      _Figure 5.2 Example body for the definition of a vehicle_
+      
+      In case priority use cases are desired, it is also mandatory to provide route information before the actual trip is started. Also, for other use cases the route information can make it possible to provide information at an earlier stage, so in general it is advised to provide this information when possible.
+
+  - name: Regular position flow
+    x-displayName: Regular position flow
+    description: |
+      Once the vehicle, route information is injected, the FMS should open a WebSocket connection and start sending LocationUpdateEvents to receive location-based events. The next sequence diagram indicates the regular flow for location-based events, in case of position-driven event matching.  
+      
+      ![Figure1](assets/figure_5_3.png)       
+      _Figure 5.3 Regular position flow – position driven_
+      
+      In case of event driving matching, events are matched based on the last known (or calculated position), resulting in the following flow
+      
+      ![Figure1](assets/figure_5_4.png)       
+      _Figure 5.4 Regular position flow – event driven_
+      
+      In regular operation, the FMS party will need to provide a locationUpdateEvent at least once every 5 seconds (0.2 Hz) for each individual (active) vehicle. Based on this location, the CSP backend will subsequently check for new, updated or deleted events for this new location and vehicle. If so, the updates will be sent over the already established WebSocket. 
+      Next to this, the CSP backend will also check if the vehicle has entered or left a ‘high position rate zone’ after which the CSP backend will optionally send a high position rate control message (changedFrequencyRequest). 
+
+  - name: Priority characteristics changed
+    x-displayName: Priority characteristics changed
+    description: |
+      Every time a OBU characteristic changes, the FMS needs to evaluate if iVRI priority service is still or no longer applicable. If there is a change in state, the FMS needs to provide this change through a OTM event to the CSP. Once the CSP has correctly processed this priority state change, it will return with an OK/NOK http status code to indicate if the property change has been successfully processed.
+      
+      ![Figure1](assets/figure_5_5.png)       
+      _Figure 5.5 Priority characteristics changed_
+
+  - name: iVRI priority flow
+    x-displayName: iVRI priority flow
+    description: |
+      Pre-condition: Upcoming route for the vehicle is pre-registered by calling the PUT /api/v5/routes endpoint.
+      In order to support iVRI priority for logistics, the current active route for each truck needs to be known. If not, no directionality info can be given to the iVRIs and no priority will be granted to the truck. A vehicle should therefore always have a correct route assigned which should always be followed by the driver. 
+      In case of route diversion, the priority use-case might not work. In this situation, the CSP backend can send extra control messages to indicate a detection of deviation which will be explained in the next section 
+
+      ![Figure1](assets/figure_5_6.png)       
+      _Figure 5.6 iVRI priority flow_
+      
+  - name: Unhappy flows 
+    x-displayName: Unhappy flows 
+    description: |
+      # Unhappy Flow - Route Tracking Failed flow
+      Pre-conditions: iVRI priority flow, iVRI priority has successfully started and positions are being sent for the vehicle over the WebSocket
+
+      If a vehicle deviates from the route for too long, priority functionality might fail. If this happens, the CSP backend will notify the FMS-party through a specially tailored control message which can be found below. 
+      The FMS-party will then have to re-calculate the route (if applicable), add the route on the OTM interface and assign the vehicle to the new route. It is assumed that a vehicle can only be linked to a single route at a time, the CSP will ensure always the latest (most recent) route will be used
+
+      The CSP can also recalculate the route automatically after x seconds or minutes. There are no requirements for this interval as it is seen as an CSP specific service.
+
+      ![Figure1](assets/figure_5_7.png)       
+      _Figure 5.7 Route Tracking Failed flow_
+      
+       ![Figure1](assets/table_4.png)       
+      
+      # Unhappy flow - Disconnect
+      In case of a disconnection, a reestablishment of the connection must be executed by using the sequence diagrams of the[Regular position flow}(#tags/Regular-position-flow). 
+      What to do, depends on the reestablishment time:
+        - Reestablishment within 24 hours of registration. Only a reconnection of the Websocket is necessary
+        - Reestablishment after 24 hours of registration. Also vehicle and route information have to be resubmitted.
+  
+  - name: Clock synchronisation
+    x-displayName: Clock synchronisation 
+    description: |
+      ![Figure1](assets/figure_6.png)       
+      _Figure 6 Clock synchronisation flow_
+      
+                          
+  - name: FmsItsMessage
+    x-displayName: FMS ITS Message
+    description: |
+      All the realtime communication over the websocket connection is done in only one message format.
+           
+      Every message always contains the following three elements:
+        - messageType
+        - vehicleId
+        - container 
+      
+      (See [General Protobuf model](#tag/The-WebSocket-interface-with-Protobuf-messages/General-Protobuf-model).)
+            
+      The container element presents the real message. Depending on the message type, the container element can have different subelements. 
+                      
+      Please be aware that in this documentation all definitions are in JSON, and look like REST API call's but for the protobuf messages this only has been done for readability.
+      You will have to parse incoming data from the websocket connection to objects in your code with the [google.protobuf library](https://github.com/protocolbuffers/protobuf?tab=readme-ov-file#protobuf-runtime-installation) available for your development environment. 
+      If that object is then serialized to JSON the output is conform this documentation.   
+           
+      For outgoing messages you need to parse created objects to protobuf in stead of serialize it to JSON with the same [google.protobuf library](https://github.com/protocolbuffers/protobuf?tab=readme-ov-file#protobuf-runtime-installation).
+  - name: Examples   
+    description: |
+      Complete examples of messages in protobuf  
+  - name: LocationUpdateExample       
+    x-displayName: Location update  
+  - name: TimestampMessageExample       
+    x-displayName: Timestamp messages
+    description: |
+      For both a request and response a similar timestamp message is used, only the number of fields that are filled differ. 
+         
+      A timestamp message contains the following fields: 
+       - requestTransmission (filled by the requesting CSP), 
+       - requestReception (filled upon receipt of the request by the FMS) 
+       - responseTransmission (filled when the response is transmitted by the FMS)
+  - name: EventMessage       
+    x-displayName: Event messages
+  - name: ErrorMessage       
+    x-displayName: Error messages       
+                                  
+x-tagGroups:
+   - name: About this API
+     tags:
+      - High level architecture
+      - Communication types
+      - Interface flow
+      - Authentication
+      - Authorization 
+   - name: Functional description of ITS-FMS Interface
+     tags:
+      - Event codes
+      - Dynamic sampling
+      - Timestamps in locationUpdateEvent
+      - GPS Accuracy 
+      - Inactivity monitoring   
+      - Use case specific functionality
+   - name: Technical architecture of ITS-FMS interface
+     tags:
+      - Technical architecture
+      - The OTM REST-interface
+      - The WebSocket interface with Protobuf messages
+      - Time synchronisation
+   - name: Sequence diagrams
+     tags:
+      - FMS connecting with CSP for first time
+      - Regular position flow
+      - Priority characteristics changed
+      - iVRI priority flow
+      - Unhappy flows 
+      - Clock synchronisation
+   - name: REST API
+     tags:
+      - Vehicle
+      - Route
+   - name: Protocol Buffers
+     tags:
+      - FmsItsMessage
+   - name: Message examples
+     tags:
+      - LocationUpdateExample
+      - TimestampMessageExample
+      - EventMessage
+      - ErrorMessage
+     
+paths: 
+   /vehicles:
+    parameters:
+      - name: Content-Type
+        in: header
+        description: Only application/json is accepted
+        example: application/json
+        required: true
+        schema:
+          type: string
+          default: application/json
+    put:
+      tags:
+        - Vehicle
+      summary: Announce an truck
+      externalDocs:
+          description: |
+             Note: just al small part of the OTM Vehicle message is used here. Find more details the OTM documentation.
+          url: https://otm5.opentripmodel.org/#tag/Vehicle
+      description: |
+         Announce an truck that is going to connect to the cloud service provider. This has to be done at least every 24 hours.
+      responses:
+        "200":
+          description: OK (output body is copy input json)
+        "400":
+          description: Bad request
+      requestBody:
+        $ref: "#/components/requestBodies/VehicleMessage"
+        
+   /routes:
+    parameters:
+      - name: Content-Type
+        in: header
+        description: Only application/json is accepted
+        example: application/json
+        required: true
+        schema:
+          type: string
+          default: application/json
+    put:
+      tags:
+        - Route
+      summary: Announce an route
+      externalDocs:
+          description: |
+            Note: just al small part of the OTM Route message is used here. Find more details the OTM documentation.
+            
+          url: https://otm5.opentripmodel.org/#tag/Route
+      description: | 
+        Announce the route the truck will go. 
+        
+        In order to be able to request priority at a smart traffic light (iVRI) it is mandatory that the route of the vehicle is known.
+        At the moment this is only required for the requesting priority for trucks at smart traffic lights, because the cloud service provider needs to know the direction to request for priority in the correct direction. 
+          
+        A route is normally stored / used for the next 12 hours, unless specific timestamps are specified in the startTime and endTime of Actions in the route. 
+        When startTime and EndTime are defined, the route is only active between these times. 
+           
+        The cleaning frequency can be different for ITS Cloud Service Provider. With a minimum frequency of once per 24 hour.         
+      responses:
+        "400":
+          description: Bad request
+      requestBody:
+        $ref: "#/components/requestBodies/RouteMessage"
+
+
+   /routes/{RouteId}:
+    delete:
+      tags:
+        - Route
+      description: |
+         A route is normally stored / used for the next 12 hours, therefore it is advised always to use the DELETE Route api call to remove an completed or cancelled existing route first before adding a new or changed route. This is to avoid there are multiple active routes for the same truck.  
+      summary: Remove an route
+      parameters:
+        - name: UUID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted route with the provided UUID
+        "400":
+          description: Client error
+        "500":
+          description: Server error
+                
+   /protobuf_message:
+    get:
+      parameters:
+      - name: Content-Type
+        in: header
+        description: |
+          Protobuf over websocket connection
+        example: application/proto
+      tags:
+        - FmsItsMessage
+      summary: Generic message structure 
+      description: | 
+        Generic [ITS-FMS Interface message structure](#tag/The-WebSocket-interface-with-Protobuf-messages/General-Protobuf-model).           
+      requestBody:
+        $ref: "#/components/requestBodies/FmsItsMessage"
+   
+   /protobuf_container:
+    get:
+      parameters:
+      - name: Content-Type
+        in: header
+        description: | 
+          Protobuf over websocket connection          
+        example: application/proto
+        
+      tags:
+        - FmsItsMessage
+      summary: Container element 
+      description: |
+        The container element presents the real message and is one of the root elements of an complete message 
+           
+        Depending on the message type the container will have:
+          - TIMESTAMP_MESSAGE: an timestampMessage object
+          - EVENT_MESSAGE: an InfoContainer and Contentcontainer
+          - LOCATION_UPDATE: an locationUpdateEvent  
+          - ERROR_MESSAGE: an Errormessage
+          
+        Note: All communication through the websocket connection is done in protobuf, when serialized to JSON this is the default structure.   
+      requestBody:
+        $ref: "#/components/requestBodies/Container"
+        
+   /protobuf_info_container:
+    get:
+      parameters:
+      - name: Content-Type
+        in: header
+        description: | 
+          Protobuf over websocket connection          
+        example: application/proto
+        
+      tags:
+        - FmsItsMessage
+      summary: Info container element
+      description: |
+           General information about the message not related to the event itself.
+           
+      requestBody:
+        $ref: "#/components/requestBodies/InfoContainer"
+
+   /protobuf_content_container:
+    get:
+      parameters:
+      - name: Content-Type
+        in: header
+        description: Protobuf over websocket connection
+        example: application/proto
+        
+      tags:
+        - FmsItsMessage
+      summary: Content container element
+      description: |
+        Depending on the message type the container has different contents          
+      requestBody:
+        $ref: "#/components/requestBodies/ContentContainer"     
+  
+   /protobuf_timestamp_message:
+    get:
+      tags:
+        - FmsItsMessage
+        - TimestampRequestMessage
+      summary: Timestamp message element
+      description: | 
+        The timestamp message element presents the time synchronization info and is one of the elements of an container element. 
+                
+        It is important that all connected systems have their times properly synchronized. 
+        To determine if this is indeed the case, the CSP will regularly (typically every minute) send a timestamp request.    
+        
+        The FMS-party should respond with a timestamp response message as quickly as possible. 
+        If the average time difference between an FMS and CSP consistently exceeds 3 seconds (or no response is received within 3 seconds), the CSP will send an error message.
+      requestBody:
+        $ref: "#/components/requestBodies/TimeStampMessageRequest"
+    put:
+      tags:
+        - FmsItsMessage
+        - TimestampUpdateMessage
+      summary: Timestamp message element
+      description: | 
+        The timestamp message element presents the time synchronization info and is one of the elements of an container element. 
+                
+        It is important that all connected systems have their times properly synchronized. 
+        To determine if this is indeed the case, the CSP will regularly (typically every minute) send a timestamp request.    
+        
+        The FMS-party should respond with a timestamp response message as quickly as possible. 
+        If the average time difference between an FMS and CSP consistently exceeds 3 seconds (or no response is received within 3 seconds), the CSP will send an error message.         
+      requestBody:
+        $ref: "#/components/requestBodies/TimeStampMessageResponse"
+
+   /protobuf_timestamp_message_example:
+    get:
+      tags:
+        - TimestampMessageExample
+      summary: Timestamp message request
+      requestBody:
+        $ref: "#/components/requestBodies/TimeStampMessageRequestExample"
+    put:
+      tags:
+        - TimestampMessageExample
+      summary: Timestamp message response
+      requestBody:
+        $ref: "#/components/requestBodies/TimeStampMessageResponseExample"
+                      
+   /protobuf_location_update_event:
+    put:
+      tags:
+        - FmsItsMessage
+      description: |
+        The location update message element presents vehicle location information and is one of the elements of an container element.
+        
+        The FMS-party will provide locationUpdateEvents of each individual vehicle over one unique WebSocket connection per vehicle. 
+        The location updates must be sent as a stream and not in batch to support the real-time character of the C-ITS ecosystem. 
+        A default rate of 1 locationUpdateEvent per 5 seconds (0.2 Hz) is required for each individual vehicle to be able to react to real-time event updates in a timely manner.
+           
+      summary: |
+        Location update element
+      requestBody:
+        $ref: "#/components/requestBodies/LocationUpdateEvent"
+ 
+   /protobuf_location_update_example:
+    put:
+      tags:
+        - LocationUpdateExample
+      description: |
+        Location update of vehicle from FMS to CSP            
+      summary: |
+        Location update
+      requestBody:
+        $ref: "#/components/requestBodies/LocationUpdateExample"
+        
+   /protobuf_error_message:
+    get:
+      tags:
+        - FmsItsMessage
+      summary: |
+        Error messages element
+      description: | 
+        The error message element presents an error message send form CSP to FMS and is one of the elements of an container element.
+       
+      requestBody:
+        $ref: "#/components/requestBodies/ErrorMessage"
+
+   /protobuf_error_message_timestamp:
+    get:
+      tags:
+        - ErrorMessage
+      summary: |
+        Timesync error
+      description: | 
+        No timesync response received within required response time
+        
+        The error message element presents an error message send form CSP to FMS and is one of the elements of an container element.
+       
+      requestBody:
+        $ref: "#/components/requestBodies/ErrorMessageTimesync"
+
+   /protobuf_error_message_location:
+    get:
+      tags:
+        - ErrorMessage
+      summary: |
+        Location update error
+      description: | 
+        No location update received within required interval time
+        
+        The error message element presents an error message send form CSP to FMS and is one of the elements of an container element.
+       
+      requestBody:
+        $ref: "#/components/requestBodies/ErrorMessageLocation"
+                
+                
+   /protobuf_changed_frequency_request_message:
+    get:
+      tags:
+        - EventMessage
+      summary: Change location update frequency request from CSP
+      description: |
+        CSP will send this message when based on received locationUpdates the vehicle is approaching or leaving a ‘high position rate zone’ and the FMS can change the update frequency.
+        
+        To reduce the amount of location updates required, dynamic sampling can be used. An FMS-party can turn dynamic sampling on or off via the OTM-interface. 
+        With dynamic sampling the CSP sends a “Changed frequency request” each time a new update interval is desired. Intervals can range between 1 and
+        60 seconds. An FMS-party is allowed to keep on sending updates more frequently, although updates within 100 ms of the last processed update will be discarded by the CSP.
+        It is advisable that the FMS-party sends an additional location update when the speed of the vehicle changes significantly (in general if the speed increases or decreases more than 15 km/h since the last update).
+ 
+      requestBody:
+        $ref: "#/components/requestBodies/ChangedFrequencyRequestMessage"
+
+   /protobuf_lane_configuration_event:
+    get:
+      tags:
+        - EventMessage
+      summary: Lane configuration
+      description: |
+        Details about lanes on current road and heading
+      requestBody:
+        $ref: "#/components/requestBodies/LaneConfigurationEvent"                
+                
+   /protobuf_maximum_speed_event:
+    get:
+      tags:
+        - EventMessage
+      summary: Change maximum speed limit for current road
+      description: |
+        The maximum speed information in this case should not show the traffic signs along the road, but the vehicle-specific
+        information at the moment in time.
+  
+      requestBody:
+        $ref: "#/components/requestBodies/MaximumSpeedEventMessage"
+        
+   /protobuf_traffic_light_status_event:
+    get:
+      tags:
+        - EventMessage
+      summary: Traffic light status
+      description: |
+      requestBody:
+        $ref: "#/components/requestBodies/TrafficLightStatusEvent"    
+
+   /protobuf_traffic_light_timing_event:
+    get:
+      tags:
+        - EventMessage
+      summary: Traffic light timing
+      description: |
+        Message contains information about when traffic lights will change from status 
+      requestBody:
+        $ref: "#/components/requestBodies/TrafficLightTimingEvent"    
+        
+   /protobuf_priority_status_event:
+    get:
+      tags:
+        - EventMessage
+      summary: Priority request status
+      description: |
+      requestBody:
+        $ref: "#/components/requestBodies/PriorityStatusEvent"    
+              
+   /protobuf_sensor_tirepressure_event:
+    get:
+      tags:
+        - EventMessage
+      summary: Tire pressure information
+      description: |
+        Example message for an event where an connected truck passes an sensor and the left tire on the second axle seems to be below the suspect level
+        
+        The current tire pressure sensors detect anomalies by analyzing the tread and footprint of a tire. 
+        In case anomalies are detected the specific location (axle number and left/right indication) of the anomalies and the type of anomaly (suspect or flat) is presented. 
+        The worst case of all detected anomalies is then presented as the overall status. 
+        Note, that for unloaded / lightly loaded vehicles a status OK does not necessarily indicate good tire pressure and therefore should not be presented as such to the driver
+          
+      requestBody:
+        $ref: "#/components/requestBodies/TirePressureGaugeEvent"    
+              
+
+                                                    
+                 
+components:
+    schemas:
+     
+      VehicleId:
+        type: string
+        format: uuid
+        description: | 
+          Uniquely identifies this vehicle for the next 24 hours
+        
+      VehicleName:
+        type: string
+        description: |
+          The name given to an vehicle, only used for displaying and
+          searching in logging
+        example: Demo truck           
+      
+      RouteId:
+        type: string
+        format: uuid
+        description: |
+          Uniquely identifies this route for the next 12 hours
+      
+      RouteName:
+        type: string
+        description: |
+          The name given to an route, only used for displaying and
+          searching in logging
+        example: Test route           
+      
+      Vehicle:
+        type: object
+        required:
+          - id
+          - vehicleType
+          - fuel
+        properties:
+          id:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          name:
+            allOf:
+              - $ref: "#/components/schemas/VehicleName"    
+          vehicleType:
+            description: |
+               The free formatted vehicleType needs to be restricted to a fixed set of possibilities to be able to map
+               them to ETSI variables used in the intelligent traffic light (iVRI) use cases. In this interface normally "truck" is used.
+               
+               Supported options are:
+                - lightTruck
+                - boxtruck
+                - truck
+                - heavyTruck
+                - trailer
+                - specialTransport
+                - dangerousGoods
+                - bus
+                - tram
+                - pedestrian
+                - cyclist
+                - moped
+                - motorcycle
+                - car
+                - passengerCar
+                - roadWork
+                - rescue
+                - emergency
+                - safetyCar
+                - agriculture
+                - military
+                - roadOperator
+                - taxi
+                  
+            type: string
+            enum: 
+              - lightTruck
+              - boxtruck
+              - truck
+              - heavyTruck
+              - trailer
+              - specialTransport
+              - dangerousGoods
+              - bus
+              - tram
+              - pedestrian
+              - cyclist
+              - moped
+              - motorcycle
+              - car
+              - passengerCar
+              - roadWork
+              - rescue
+              - emergency
+              - safetyCar
+              - agriculture
+              - military
+              - roadOperator
+              - taxi
+            example: truck
+          fuel:
+            type: string,
+            enum: 
+              - petrol
+              - diesel 
+              - electricity
+              - hydrogen 
+              - lng 
+              - cng 
+              - adBlue 
+              - other   
+            description: |
+               The type of fuel the vehicle runs on
+            example: diesel
+          externalAttributes:
+            description: Extended properties to the standard OTM message just for this interface
+            type: object
+            properties:
+              iVRIPriorityEnabled:
+                type: boolean
+                example: false
+                description: |
+                   Only set to **true** when de priority for trucks use case has to be activated for the current session.
+                   
+                   The CSP still needs to be informed when a certain vehicle is allowed to request priority. 
+                   If such information is not provided, filtering cannot be done. This would give unauthorized vehicles the possibility to request priority. 
+                   This is a safety issue that is mitigated by adding an extra mandatory iVRIPriorityEnabled field to the OTM Vehicle’s externalAttributes object. 
+                   The FMS-providers will be responsible for determining whether a certain OTM vehicle is rightfully allowed to request priority based on extra route or internal back office information.
+                   The FMS-providers will change the priority state by performing an updateEvent operation and altering the iVRIPriorityEnabled field to reflect the current allow/disallow state.
+              dynamicRate:
+                type: boolean
+                example: false
+                description: | 
+                  The interface allows the FMS-party to work in two different ways in providing position updates. 
+                  At a fixed 1 Hz interval, or dynamically where the CSP is requesting the desired sample interval depending on the current location of the vehicle. 
+                  To communicate the desired operational mode, the OTM vehicle externalAttributes was extended with the additional property dynamicRate which can be true (dynamic location updates) or false (1 Hz updates)
+
+                  Dynamic location updates:
+                  
+                  - When set to **false**, an location update from the truck is expected with an 1 Hz interval.\n\n
+                  - When set to **true**, the cloud service provider will send change frequency requests when the frequency has to be increased, or can be decreased."                 
+                  
+      Route:
+        type: object
+        required: 
+          - id 
+          - geoReferences 
+          - actors
+        properties:
+          id:
+            allOf:
+              - $ref: "#/components/schemas/RouteId"
+          name:
+            allOf:
+              - $ref: "#/components/schemas/RouteName"
+          geoReferences:
+            description: | 
+              Geographic representation of this route.
+              
+              The latLonArrayGeoReference is the preferred option. When the addressGeoReference geo-reference method is used the CSP will determine the route coordinates.
+              The more detailed the route is (number of geoReferences), the more accurate the Cloud Service Provider can provide route specific events. 
+              At least two geoReferences (start and endlocation of a route) are required.
+              
+              When only one addressGeoReference entry is added, it is assumed to be the destination. The ITS Cloud Service Provider will determine the route coordinates to the destination.
+
+              Note: Open Trip Model supports multiple geo-reference methods, only latLonArrayGeoReference and addressGeoReference are supported by the ITS-FMS interface.
+            allOf:
+              - $ref: "#/components/schemas/latLonArrayGeoReference"
+          actors:
+             description: |
+               To relate a route to a specific vehicle, an Actor must be specified. 
+               To avoid ambiguity only a reference is allowed to a vehicle.
+             type: array               
+             items:
+                 allOf:
+                 - $ref: "#/components/schemas/Actor"
+          actions:
+             description: |
+               A route is normally stored / used for the next 12 hours, unless specific timestamps are specified in the startTime and endTime of Actions in the route. 
+               When startTime and EndTime are defined, the route is only active between these times.
+             type: array               
+             items:
+                 allOf:
+                 - $ref: "#/components/schemas/Action"
+                       
+      latLonArrayGeoReference:
+       type: object
+       required: 
+         - type 
+         - points 
+       properties:
+         type:
+           type: string
+           enum: [latLonArrayGeoReference]
+           example: latLonArrayGeoReference
+           
+           description: |
+              In this interface only latLonArrayGeoReference is used, while in [OTM](https://otm5.opentripmodel.org/#tag/Route/paths/~1api~1v5~1routes/put!path=geoReferences&t=request) more types are defined
+         points:
+           description: |
+              An array of lat/lon points
+              The more detailed the route is (number of geoReferences), the more accurate the Cloud Service Provider can provide route specific events. 
+              
+              At least two geoReferences (start and endlocation of a route) are required.
+              
+              When only one addressGeoReference entry is added, it is assumed to be the destination. The ITS Cloud Service Provider will determine the route coordinates to the destination.
+           type: array
+           items:
+               allOf:
+               - $ref: "#/components/schemas/GeoReference"   
+                   
+      Actor:
+        description: To relate a route to a specific vehicle, an Actor must be specified. To avoid ambiguity only a reference is allowed to a vehicle
+        properties:
+           associationType:
+             type: string
+             enum: [reference]
+             example: reference
+           uuid:
+             allOf:
+              - $ref: "#/components/schemas/VehicleId"
+           entityType:   
+             type: string
+             enum: [vehicle]
+             example: vehicle  
+
+      Action:
+        type: object
+        properties:
+          associationType:
+            type: string
+            enum: [inline]
+            example: inline
+          entity:
+            type: object
+            properties: 
+              actionType:
+                type: string
+                enum: [genericAction]
+                example: genericAction            
+              startTime:
+                description: |
+                  The time at which the actions starts in ISO format.
+                type: string
+                example: 2024-07-15 10:14:15
+              endTime:   
+                description: |
+                  The time at which the actions ends in ISO format.
+                type: string
+                example: 2024-07-15 12:14:15
+             
+      MessageType:
+        type: string
+        enum:
+               - MESSAGETYPE_UNKNOWN        
+               - TIMESTAMP_MESSAGE
+               - LOCATION_UPDATE        
+               - EVENT_MESSAGE
+               - ERROR_MESSAGE
+      
+      FmsItsMessage:
+        type: object
+        required:
+          - messageType
+          - vehicleId
+          - container
+        discriminator:
+          propertyName: messageType
+          mapping: 
+            LOCATION_UPDATE: '#/components/schemas/LocationUpdateExample'
+            TIMESTAMP_MESSAGE: '#/components/schemas/TimeStampMessageResponseExample'
+            EVENT_MESSAGE: '#/components/schemas/EventMessage'                                    
+            ERROR_MESSAGE: '#/components/schemas/ErrorMessageTimesync'
+        properties:
+          messageType:
+            description: |
+              Every message will be one of these types
+            allOf:
+              - $ref: "#/components/schemas/MessageType"
+          vehicleId:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          container:
+            type: object
+      
+      Container:
+        type: object
+        properties:
+          timestampMessage:
+            description: | 
+              Only in messages with messageType TIMESTAMP_MESSAGE
+            allOf:
+              - $ref: "#/components/schemas/TimeStampMessage"
+          infoContainer:
+            description: | 
+              General information about the message not related to the event itself.
+              
+              Only in messages with messageType EVENT_MESSAGE
+            allOf:
+              - $ref: "#/components/schemas/InfoContainer"
+          contentContainer:
+            description: | 
+              More information about the content of the event.
+              
+              Only in messages with messageType EVENT_MESSAGE
+            allOf:
+              - $ref: "#/components/schemas/ContentContainer"
+          locationUpdateEvent:
+            description: | 
+              Information about current position, heading and speed of the vehicle
+              
+              Only in messages with messageType LOCATION_UPDATE
+            allOf:
+              - $ref: "#/components/schemas/LocationUpdateEvent"
+          errorMessage:
+            description: | 
+              Only in messages with messageType ERROR_MESSAGE
+            allOf:
+              - $ref: "#/components/schemas/ErrorMessage"
+      
+      ErrorMessage:
+        description: |
+          General information about the message not related to the event itself.
+        type: object
+        required:
+          - errorType
+          - errorMessage
+        properties:
+          errorType:
+            allOf:
+              - $ref: "#/components/schemas/ErrorType"
+            example: TIMEDIFF_TOO_BIG
+          errorMessage:
+            type: string
+            example: No timesync response received in the last 10.004 seconds  
+          relatedMessage:
+            description: the original input message the error is related to
+            allOf:
+              - $ref: "#/components/schemas/TimeStampMessageRequestExample"
+                  
+      ErrorType:
+        description: |
+          Error codes send by CSP to FMS
+           
+          Explantion of the error codes:
+          - ERRORTYPE_UNKNOWN
+          - MISSING_FIELD               // an expected field is missing
+          - INVALID_FIELD               // a field has an invalid/unsupported value
+          - PRE_CONDITION_NOT_MET       // e.g. the required information via the API was not provided
+          - DATA_RATE_ERROR             // locationUpdateEvents are not being received according to specification
+          - NO_TIMESTAMP_ANSWER         // a timestamp response was not received within the expected timeframe
+          - TIMEDIFF_TOO_BIG            // difference between clocks of FMS and CSP is too big
+          - INVALID_PROTO               // proto message could not be decoded
+  
+        type: string,
+        enum:
+          - ERRORTYPE_UNKNOWN
+          - MISSING_FIELD
+          - INVALID_FIELD
+          - PRE_CONDITION_NOT_MET
+          - DATA_RATE_ERROR
+          - NO_TIMESTAMP_ANSWER
+          - TIMEDIFF_TOO_BIG
+          - INVALID_PROTO
+
+      TimeStampMessage:
+        type: object
+        required:
+          - requestTransmission
+        properties:
+          requestTransmission:
+            type: timestamp
+            example: 2024-03-08T21:08:22.329080800Z
+      
+      TimeStampMessageResponse:
+        allOf:
+          - $ref: "#/components/schemas/TimeStampMessage"
+          - type: object
+            required:
+                  - requestTransmission
+                  - requestReception
+                  - responseTransmission   
+            properties:
+              requestReception:
+                description: |
+                  Note: Only required in TimestampResponse message
+                type: timestamp
+                example: 2024-03-08T21:08:22.339080800Z
+              responseTransmission:
+                description: |
+                  Note: Only required in TimestampResponse message
+                type: timestamp
+                example: 2024-03-08T21:08:22.339090800Z
+                                        
+      MeasurementUnit:
+        description: |
+          Measurement units
+           
+          Speed units:
+          - KILOMETERS_PER_HOUR
+          - METERS_PER_SECOND
+          
+          Mass units:
+          - KILOGRAM
+          - POUND
+          
+          Length and height units:
+          - METER
+          - CENTIMETER
+          
+          Time units:
+          - MILLISECOND
+          - SECOND
+          - MINUTE
+          - HOUR
+          
+          Heading units:
+          - DEGREES
+        type: string,
+        enum:
+          - KILOMETERS_PER_HOUR
+          - METERS_PER_SECOND
+          - KILOGRAM
+          - POUND
+          - METER
+          - CENTIMETER
+          - MILLISECOND
+          - SECOND
+          - MINUTE
+          - HOUR
+          - DEGREES
+      
+      MeasurementType:
+        description: |
+          Measurement
+        required:
+          - value
+          - unit
+        properties:  
+          value:
+            type: number
+            format: int
+          unit:
+            allOf:
+              - $ref: "#/components/schemas/MeasurementUnit"
+              
+      InfoContainer:
+        description: |
+          General information about the message not related to the event itself.
+        type: object
+        required:
+          - author
+          - eventId
+          - messageType
+          - eventVersion
+          - creationTime 
+        properties:
+          author:
+            type: string
+            example: Demo CSP
+          eventId:
+            allOf:
+              - $ref: "#/components/schemas/EventId"            
+          messageType:
+            type: string,
+            enum:
+            - NEW
+            - UPDATE
+            - DELETE
+            description: | 
+              - NEW: for new events
+              - UPDATE: for an update of an event send earlier
+              - DELETE: for canceling or informing the event is not applicable anymore
+            example: NEW   
+          eventVersion: 
+            type: int
+            description: |
+              the message counter for this specific event (for NEW always 1, UPDATES and DELETES will have an increasing number)
+            example: 1 
+          creationTime:
+            type: timestamp
+            example: 2024-03-08T21:08:22.329080800Z
+          desiredInterval:
+            type: int
+            description: |
+              In regular operation, the FMS party will need to provide a locationUpdateEvent at least once every 5 seconds (0.2 Hz) for each individual (active) vehicle. Based on this location, the CSP backend will subsequently check for new, updated or deleted events for this new location and vehicle. If so, the updates will be sent over the already established WebSocket. Next to this, the CSP backend will also check if the vehicle has entered or left a ‘high position rate zone’ after which the CSP backend will optionally send a high position rate control message (changedFrequencyRequest)
+            
+              Note: Only available for messageType EVENT_MESSAGE and ItsEventCode CHANGED_FREQUENCY_REQUEST  
+      
+      InfoContainerNoInterval:
+        description: |
+          General information about the message not related to the event itself.
+        type: object
+        required:
+          - author
+          - eventId
+          - messageType
+          - eventVersion
+          - creationTime 
+        properties:
+          author:
+            type: string
+            example: Demo CSP
+          eventId:
+            allOf:
+              - $ref: "#/components/schemas/EventId"            
+          messageType:
+            type: string,
+            enum:
+            - NEW
+            - UPDATE
+            - DELETE
+            description: | 
+              - NEW: for new events
+              - UPDATE: for an update of an event send earlier
+              - DELETE: for canceling or informing the event is not applicable anymore
+            example: NEW   
+          eventVersion: 
+            type: int
+            description: |
+              the message counter for this specific event (for NEW always 1, UPDATES and DELETES will have an increasing number)
+            example: 1 
+          creationTime:
+            type: timestamp
+            example: 2024-03-08T21:08:22.329080800Z
+              
+      ContentContainer:
+        description: |
+          More information about the content of the event.
+        type: object
+        required:
+          - itsEventCode
+          - eventInfo
+        properties:
+          itsEventCode:
+            description: |
+              [ITSEventCode](#tag/Event-codes) is referring to the usecase at hand.
+              
+              Note: Not every CSP supports all these events/use cases, please contact your CSP for availability of each of these events             
+            allOf:
+              - $ref: "#/components/schemas/ItsEventCode"
+          eventInfo:    
+            allOf:
+              - $ref: "#/components/schemas/EventInfo"  
+      
+      Point:
+        type: object
+        required:
+         - latitude
+         - longitude
+        properties:
+         latitude:
+           description: The latitude of a point location.
+           type: number
+           format: float
+           example: 51.690391
+         longitude:
+           description: The longitude of a point location.
+           type: number
+           format: float
+           example: 5.349344
+      
+      Location:
+        type: object
+        required:
+         - coordinates
+         - coordinatesType
+         - heading
+        properties:
+          coordinates:  
+            type: array
+            items:
+              allOf:
+                - $ref: "#/components/schemas/Point"
+          coordinatesType:
+            description: | 
+              Type of coordinates field.
+              
+              Options:
+              - UNKNOWN_COORDINATES_TYPE = Unknown coordinates type
+              - LINE_STRING = Line string
+              - POINT = Point
+              - POLYGON = Polygon                           
+            type: string
+            enum:
+              - UNKNOWN_COORDINATES_TYPE
+              - LINE_STRING
+              - POINT
+              - POLYGON
+            example: POLYGON
+          heading:
+            allOf:
+              - $ref: "#/components/schemas/MeasurementType"
+      
+      StaticEventMetadata:
+        type: object
+        properties:
+          weatherConditions:
+            allOf:
+              - $ref: "#/components/schemas/WeatherConditions"
+          roadConfiguration:
+            allOf:
+              - $ref: "#/components/schemas/RoadConfiguration"
+          speedInfo:
+            allOf:
+              - $ref: "#/components/schemas/SpeedInfo"
+          ivriContainer:   
+            allOf:
+              - $ref: "#/components/schemas/IvriContainer"
+          laneInfo:   
+            allOf:
+              - $ref: "#/components/schemas/LaneInfo"
+          sensorInfo:   
+            allOf:
+              - $ref: "#/components/schemas/SensorInfo"
+          overtakingInfo:   
+            allOf:
+              - $ref: "#/components/schemas/OvertakingInfo"              
+              
+      WeatherConditions:
+        description: | 
+          Weather conditions:
+          - UNKNOWN_WEATHER_CONDITION = Unknown weather condition
+          - HEAVY_RAIN = Heavy rain
+          - SLIPPERY_ROAD = Slippery Road (ice, oil, ...)
+          - FOG = Fog
+          - HEAVY_WIND = Heavy Wind
+          - HEAVY_SNOWFALL = Heavy Snowfall
+          - HAIL = Hail          
+        type: string
+        enum:
+          - UNKNOWN_WEATHER_CONDITION        
+          - HEAVY_RAIN
+          - SLIPPERY_ROAD        
+          - FOG
+          - HEAVY_WIND
+          - HEAVY_SNOWFALL
+          - HAIL
+      
+      RoadConfigStatus:
+        description: | 
+          Status indicates state of lane defined in container laneInfo
+          
+          States:
+          - UNKNOWN_ROAD_CONFIG_STATUS = Unknown weather condition
+          - OPEN = Open: 'falling' green arrow
+          - CLOSED = Closed for all traffic: red cross
+          - CLOSED_FOR_ALL_TRAFFIC = Closed for all traffic
+          - MERGE_RIGHT = verdrijfpijl naar rechts
+          - MERGE_LEFT = verdrijfpijl naar links
+          - END_OF_RESTRICTIONS = verkeersbord F08
+          - CLOSED_FOR_YOU = You cannot use this lane for your type of vehicle
+          - CHANGED_MAX_SPEED = temporary change of the maximum speed (matrixborden)
+          - BLANK = Variable message sign is blank / turned off 
+        type: string
+        enum:
+          - UNKNOWN_ROAD_CONFIG_STATUS        
+          - OPEN
+          - CLOSED        
+          - CLOSED_FOR_ALL_TRAFFIC
+          - MERGE_RIGHT
+          - MERGE_LEFT
+          - END_OF_RESTRICTIONS
+          - CLOSED_FOR_YOU
+          - CHANGED_MAX_SPEED
+          - BLANK
+        example: OPEN 
+         
+      RoadConfigLocation:
+        description: | 
+          Location relative to vehicle
+          
+          States:
+          - UNKNOWN_LOCATION
+          - LOCATION_DOWNSTREAM = Object located downstream relative to the vehicle
+          - LOCATION_UPSTREAM = Object located upstream relative to the vehicle 
+        type: string
+        enum:
+          - UNKNOWN_LOCATION        
+          - LOCATION_DOWNSTREAM
+          - LOCATION_UPSTREAM            
+        example: LOCATION_DOWNSTREAM
+          
+      RoadConfiguration:
+        type: object
+        properties:
+          roadConfigStatus:
+            allOf:
+              - $ref: "#/components/schemas/RoadConfigStatus"
+          maxSpeed:
+            description: optional field in case the status is CHANGED_MAX_SPEED
+            allOf:
+              - $ref: "#/components/schemas/RoadConfigStatus"   
+          roadConfigLocation:
+            allOf:
+              - $ref: "#/components/schemas/RoadConfigLocation"
+          flashing:
+            type: boolean
+            example: false
+          redBorder:
+            type: boolean
+            example: false
+     
+      ApplicableVehicleType:
+        description: | 
+          Weather conditions:
+          - UNKNOWN_APPLICABLE_VEHICLE_TYPE
+          - ALL_MOTORIZED = Any kind of motorized vehicle
+          - HGV = All kinds of trucks
+          - AGRICULTURE = Agricultural vehicles like tractors
+          - MOPED   
+        type: string
+        enum:
+          - UNKNOWN_APPLICABLE_VEHICLE_TYPE      
+          - ALL_MOTORIZED
+          - HGV        
+          - AGRICULTURE
+          - MOPED
+     
+      OvertakingInfo:
+        type: object
+        properties:
+          applicableFor:
+            allOf:
+              - $ref: "#/components/schemas/ApplicableVehicleType"
+          exceptFor:
+            allOf:
+              - $ref: "#/components/schemas/ApplicableVehicleType"
+
+      SpeedInfo:
+        type: object
+        required:
+          - maximumSpeedLimit 
+          - speedLimitUnit
+        properties:
+          maximumSpeedLimit:
+            type: int
+            example: 70
+          speedLimitUnit:
+            oneOf:
+              - $ref: "#/components/schemas/MeasurementUnit"
+            example:  KILOMETERS_PER_HOUR
+      
+      IvriContainer:
+        description: |
+          General information about the message not related to the event itself.
+        type: object
+        properties:
+          priorityContainer:
+            allOf:
+              - $ref: "#/components/schemas/PriorityContainer" 
+          trafficLightStateInformation:
+            allOf:
+              - $ref: "#/components/schemas/TrafficLightStateInformation"     
+          trafficLightTimingInformation:
+            allOf:
+              - $ref: "#/components/schemas/TrafficLightTimingInformation"           
+          trafficLightSpeedAdvice:
+            allOf:
+              - $ref: "#/components/schemas/TrafficLightSpeedAdvice"        
+      
+      TrafficLightStateInformation:
+        description: |
+          General information about the message not related to the event itself.
+        type: object
+        properties:
+          currentState:
+            description: |
+              current state of traffic light at lane specified in laneInfo
+            type: string,
+            enum:
+              - UNKNOWN_TRAFFIC_LIGHT_STATE
+              - RED
+              - AMBER
+              - GREEN
+              - ORANGE_FLASHING
+              - DARK
+              - NO_LIGHT
+            example: RED
+          arrow:
+            description: |
+              Direction of the light
+              
+              Options:
+               - UNKNOWN_ARROW
+               - ARROW_NONE
+               - ARROW_LEFT
+               - ARROW_RIGHT
+               - ARROW_STRAIGHT
+            type: string,
+            enum:
+              - UNKNOWN_ARROW
+              - ARROW_NONE
+              - ARROW_LEFT
+              - ARROW_RIGHT
+              - ARROW_STRAIGHT
+            example: ARROW_LEFT
+          movement:
+            description: |
+              Indicating whether an arrow is needed or a simple round dot. 
+              
+              Options:
+               - Protected = obligation to show arrow 
+               - Permissive = round dot
+            type: string,
+            enum:
+              - UNKNOWN_MOVEMENT
+              - PROTECTED
+              - PERMISSIVE  
+            example: PROTECTED
+            
+      TrafficLightTimingInformation:
+        description: |
+          General information about the message not related to the event itself.
+        type: object
+        properties:
+          minEndTime:
+            description: |
+              The element minEndTime is used to convey the earliest time possible at which the phase could change, except when unpredictable events relating to a pre-emption or priority call disrupt a currently active timing plan. (UTC+00:00).
+            type: timestamp
+            example: 2024-03-08T09:00:43.329080800Z
+          maxEndTime:
+            description: |
+              The element MaxEndTime is used to convey the latest time possible which the phase could change, except when unpredictable events relating to a pre-emption or priority call come into play and disrupt a currently active timing plan. (UTC+00:00).
+            type: timestamp
+            example: 2024-03-08T09:02:23.329080800Z
+          likelyTime:
+            description: |
+              The element likelyTime is used to convey the most likely time the phase changes. This occurs between MinEndTime and MaxEndTime and is only relevant for traffic-actuated control programs. (UTC+00:00).
+            type: timestamp
+            example: 2024-03-08T09:01:02.329080800Z
+              
+      TrafficLightSpeedAdvice:
+        description: |
+          General information about the message not related to the event itself.
+        type: object
+        properties:
+          advice:
+            description: |
+              Advice on speed, can be quantitative or qualitative
+            type: string
+          adviceType:
+            description: |
+              Type of advice
+            type: string           
+      
+      Maneuver:
+        properties:
+         direction:
+           description: the list contains integers indicating the possible directions from the traffic light
+           type: array
+           items:
+             allOf:
+               - $ref: "#/components/schemas/Direction"  
+         alwaysYield:
+           type: boolean
+           description: |
+             boolean value indicating whether the road user should always give priority to intersecting traffic (cfr. orange flashing light)            
+              
+      Direction:
+        type: string,
+        enum:
+          - UNKNOWN_DIRECTION 
+          - STRAIGHT
+          - LEFT
+          - RIGHT
+          - U_TURN
+          - UNSPECIFIED
+      
+      SensorInfo:
+        type: object
+        properties:
+          tirePressure:
+            description: object containing information on tire pressures, itsEventCode TIRE_PRESSURE_GAUGE
+            allOf:
+              - $ref: "#/components/schemas/TirePressure"  
+          vehicleWeight:
+            description: object containing information on vehicle weight, itsEventCode WEIGHT
+            allOf:
+              - $ref: "#/components/schemas/VehicleWeight"  
+          vehicleHeight:
+            description: object containing information on vehicle height, itsEventCode ALTIMETE
+            allOf:
+              - $ref: "#/components/schemas/MeasurementType"              
+          
+      TirePressure:
+        type: object
+        properties:
+          status:
+            description: | 
+              Tire pressure status
+            
+              UNKNOWN_STATUS = 0;  // Unknown status
+              OK = 1;              // OK: all tires seem to be OK
+              NOK_SUSPECT = 2;     // Not OK: at least one tire is suspect and none seem to be flat
+              NOK_FLAT = 3;        // Not OK: at least one tire seems to be flat
+            type: string,
+            enum:
+              - UNKNOWN_STATUS 
+              - OK
+              - NOK_SUSPECT
+              - NOK_FLAT
+            example: NOK_SUSPECT  
+          axleCount:
+            desription: | 
+              integer indicating total number of axles of the vehicle
+            type: int
+            example: 2
+          anomalies:
+            desription: | 
+              object containing detailed information on pressure of every tire that is not OK
+            type: array
+            items:
+              allOf:
+                - $ref: "#/components/schemas/Anomalies"  
+
+      Anomalies:
+        type: object
+        properties:
+          axle:
+            description: |
+              indicating axle, counting starts from front of vehicle
+            example: 2  
+          side:
+            type: string,
+            enum:
+              - UNKNOWN_SIDE
+              - LEFT
+              - RIGHT
+            example: LEFT  
+          measurement:
+            type: string,
+            enum:
+              - UNKNOWN_STATUS
+              - FLAT
+              - SUSPECT
+            example: SUSPECT  
+      
+      VehicleWeight: 
+         properties:
+           axleCount:
+             description: integer indicating total number of axles of the vehicle
+             type: int
+           weightMeasurements:
+             type: array
+             items:
+               allOf:
+                 - $ref: "#/components/schemas/WeightMeasurements"  
+          
+      WeightMeasurements: 
+        type: object
+        properties:
+           axle:
+             description: indicating axle, counting starts from top of vehicle
+             type: int
+           weight:
+             allOf:
+               - $ref: "#/components/schemas/MeasurementType"  
+        
+      DynamicEventMetadata:
+        type: object
+        properties:
+          eventSpeed:
+            allOf:
+              - $ref: "#/components/schemas/MeasurementType"  
+          eventHeading:  
+            allOf:
+              - $ref: "#/components/schemas/MeasurementType"
+      
+      LocationUpdateEvent:
+        type: object
+        required:
+          - creationDate
+          - geoReference
+          - speed
+          - heading
+          - gpsQuality
+        properties:
+          id:
+            allOf:
+              - $ref: "#/components/schemas/EventId"      
+          creationDate:
+            type: timestamp
+            example: 2024-03-08T21:08:22.329080800Z
+          geoReference:
+            allOf:
+              - $ref: "#/components/schemas/GeoReference"              
+          speed:
+            allOf:
+              - $ref: "#/components/schemas/SpeedUnit"
+          heading:
+            allOf:
+              - $ref: "#/components/schemas/HeadingUnit"      
+          lifeCycle:
+            allOf:
+              - $ref: "#/components/schemas/LifeCycle"
+          deviceDate:
+            type: timestamp
+            example: 2024-03-08T21:08:22.329080800Z
+            description: | 
+              Optional timestamp when the position update was received on the FMS device and can be used when the GPS fix seems to be far of the NTP time.
+              
+              Since GPS-positioning is based on very accurate time measurements, it is assumed that location updates from the vehicle are containing a timestamp that is fully synchronized. 
+              During earlier testing, however, it was noticed that this is not true for all types of devices used. 
+              Therefore, the location update message also must contain the timestamp of the local clock of the device at the moment the GPS-update was received. 
+              If the CSP detects a location update that deviates more than 1 second of the current time, a check is performed whether the device date after time correction is within the 1 second error interval. 
+              If so, the latter timestamp is used.
+                  
+          gpsQuality:
+            description: | 
+              Deviation of coordinates in meters with 95% probability
+              
+              The quality of GPS coordinates is crucial for the CSP to send accurate and relevant event messages,
+              Therefore each locationUpdate should contain the gps_quality. The value presents the deviation in meters with 95% probability.
+              For the iVRI priority use case this value is required. For this use case the CSP should have the possibility to map these coordinates into an existing planned route. 
+              Too much deviation to an planned route causes that the CSP won’t request for priority.
+              
+              Note: Only required for use case iVRI priority
+              
+            type: number
+            format: float
+            example: 4
+      
+      EventId:
+        type: string
+        format: uuid
+        description: | 
+          Uniquely identifies this event
+      
+      LifeCycle:
+        description: in this interface only actual updates are allowed
+        type: string,
+        enum:
+          - LIFECYCLE_UNKNOWN
+          - ACTUAL
+        example: ACTUAL 
+          
+      GeoReference:
+        type: object
+        required:
+         - lat
+         - lon
+        properties:
+         lat:
+           description: The latitude of a point location.
+           type: number
+           format: double
+           example: 51.690391
+         lon:
+           description: The longitude of a point location.
+           type: number
+           format: double
+           example: 5.349344
+         type:  
+           description: |
+             only lat/lon positions are allowed in this interface, other OTM references are excluded
+           type: string
+           enum: 
+             - GEOREFERENCETYPE_UNKNOWN  
+             - LAT_LON_POINT_GEO_REFERENCE
+           example: LAT_LON_POINT_GEO_REFERENCE
+           
+      SpeedUnit:
+        allOf:
+          - $ref: "#/components/schemas/MeasurementType"
+          - type: object   
+            properties: 
+              unit:
+                example: KILOMETERS_PER_HOUR
+              value: 
+                type: int
+                example: 80
+      
+      HeadingUnit:
+        allOf:
+          - $ref: "#/components/schemas/MeasurementType"
+          - type: object   
+            properties: 
+              unit:
+                example: DEGREES
+              value:
+                type: int 
+                example: 45
+     
+      ItsEventCode:
+        type: string,
+        enum:
+          - UNKNOWN_ITS_EVENT_CODE
+          - CHANGED_FREQUENCY_REQUEST
+          - MAXIMUM_SPEED
+          - ADVISORY_SPEED_LIMIT
+          - OVERTAKING_BAN
+          - LANE_CONFIGURATION
+          - ROAD_WORKS
+          - EVENTS
+          - PLACEHOLDER
+          - TRAFFIC_JAM
+          - STATIONARY_VEHICLE
+          - INCIDENT
+          - WEATHER_CONDITIONS
+          - OBJECTS_ON_ROAD
+          - EMERGENCY_VEHICLE_APPROACHING
+          - ROAD_INSPECTOR
+          - BRIDGE_OPENING
+          - GHOST_DRIVER_WARNING
+          - PRIORITY 
+          - SELECTIVE_ACCESS
+          - TRAFFIC_LIGHT_STATUS
+          - TRAFFIC_LIGHT_TIMING
+          - ADVISORY_SPEED
+          - RAIL_CROSSING_STATUS
+          - TIRE_PRESSURE_GAUGE
+          - ALTIMETER
+          - WEIGHT
+          - PARKING_OCCUPATION
+          - PARKING_RESERVATION
+        example: UNKNOWN_ITS_EVENT_CODE   
+        description: |
+          [ITSEventCode](#tag/Event-codes) is referring to the usecase at hand.
+          
+          Not every CSP supports all these events/use cases, please contact your CSP for availability of each of these events
+          
+      TimeStampMessageRequestExample:
+        type: object
+        required:
+          - messageType
+          - container
+          - vehicleId
+        properties:
+          messageType:
+            type: text
+            example: TIMESTAMP_MESSAGE
+          vehicleId:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          container:
+            description: Message content
+            type: object
+            required:
+              - timestampMessage
+            properties:
+              timestampMessage:
+                allOf:
+                  - $ref: "#/components/schemas/TimeStampMessage"                  
+        
+      TimeStampMessageResponseExample:
+        type: object
+        required:
+          - messageType
+          - container
+          - vehicleId
+        properties:
+          messageType:
+            type: text
+            example: TIMESTAMP_MESSAGE
+          vehicleId:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          container:
+            description: Message content
+            type: object
+            required:
+              - timestampMessage
+            properties:
+              timestampMessage:
+                allOf:
+                  - $ref: "#/components/schemas/TimeStampMessageResponse"  
+      
+      LocationUpdateExample:
+        type: object
+        required:
+          - messageType
+          - container
+          - vehicleId
+        properties:
+          messageType:
+            type: text
+            example: LOCATION_UPDATE
+          vehicleId:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          container:
+            description: Message content
+            type: object
+            required:
+              - locationUpdate
+            properties:
+              locationUpdate:
+                allOf:
+                  - $ref: "#/components/schemas/LocationUpdateEvent"
+                                  
+      ErrorMessageTimesync:
+        type: object
+        required:
+          - messageType
+          - container
+          - vehicleId
+        properties:
+          messageType:
+            type: text
+            example: ERROR_MESSAGE
+          vehicleId:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          container:
+            description: Message content
+            type: object
+            required:
+              - errorMessage
+            properties:
+              errorMessage:
+                allOf:
+                  - $ref: "#/components/schemas/ErrorMessage"  
+                  
+      ErrorMessageLocation:
+        type: object
+        required:
+          - messageType
+          - container
+          - vehicleId
+        properties:
+          messageType:
+            type: text
+            example: ERROR_MESSAGE
+          vehicleId:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          container:
+            description: Message content
+            type: object
+            required:
+              - errorMessage
+            properties:
+              errorMessage:
+                type: object
+                required:
+                  - errorType
+                  - errorMessage
+                properties:
+                  errorType:
+                    allOf:
+                      - $ref: "#/components/schemas/ErrorType"
+                    example: DATA_RATE_ERROR                
+                  errorMessage:
+                    type: string
+                    example: Last location update received after 2.5134287 seconds at 2023-03-08T21:22:25.9213817Z, expected every 1 seconds
+             
+      TimeUnit:
+        type: object
+        required:
+          - value
+          - unit
+        properties:  
+          unit:
+             type: string,
+             enum:
+               - MILLISECOND        
+               - MINUTE
+               - HOUR        
+               - DEGREES
+          value:
+             type: string
+             
+      MassUnit:
+        type: object
+        required:
+          - value
+          - unit
+        properties:  
+          unit:
+             type: string,
+             enum:
+               - KILOGRAM        
+               - POUND
+          value:
+             type: string
+            
+      EventMessage:
+        description: A JSON representation of an protobuf event message
+        allOf:
+          - $ref: "#/components/schemas/FmsItsMessage"
+          - type: object   
+            properties:
+              messageType:
+                example: EVENT_MESSAGE
+              container:
+                type: object
+                properties:
+                  infoContainer:
+                    allOf:
+                      - $ref: "#/components/schemas/InfoContainer"  
+                  contentContainer:
+                    allOf:
+                      - $ref: "#/components/schemas/ContentContainer"
+
+      PriorityStatus:
+        description: | 
+          Feedback on priority request, itsEventCode PRIORITY.
+             
+          [See paragraph Priority at traffic lights](#tag/Use-case-specific-functionality/Priority-at-traffic-lights)
+                 
+        type: string
+        enum:
+          - unknown
+          - requested
+          - processing
+          - watchOtherTraffic
+          - granted
+          - rejected
+          - maxPresence
+          - reserviceLocked
+          - cancelled
+          - noAnswer 
+          - wrongSeqNo
+          - maxEtaExceeded
+          - noRoute 
+          - noPbcMatch
+        example: granted
+                            
+      PriorityContainer:
+        description: |
+          General information about the message not related to the event itself.
+        type: object
+        required:
+          - status
+          - maneuver
+          - laneId
+        properties:
+          status:
+            allOf:
+              - $ref: "#/components/schemas/PriorityStatus"                        
+          maneuver:
+            allOf:
+              - $ref: "#/components/schemas/Maneuver"            
+          laneId:
+            type: int
+            example: 1   
+           
+      LocationPoint:
+        type: object
+        required:
+          - coordinates
+          - coordinatesType
+        properties:
+          coordinates:
+            type: array
+            items:
+              allOf:
+                - $ref: "#/components/schemas/Point"     
+          coordinatesType:
+            type: string
+            example: POINT 
+      
+      LaneInfo:
+        type: object
+        required:
+          - maxLaneId
+          - laneId
+        properties:
+          maxLaneId:
+            description: |
+              Number of lanes
+            type: int
+            example: 3
+          laneId:
+            description: |
+               For lane indication, the lane number is counted left to right. 
+            type: int
+            example: 2            
+          maneuvers:
+            description: |
+              The different maneuvers for which this traffic light gives info, itsEventCode LANE_CONFIGURATION, TRAFFIC_LIGHT_STATUS
+              
+              Direction of the light options:
+               - UNKNOWN_ARROW
+               - ARROW_NONE
+               - ARROW_LEFT
+               - ARROW_RIGHT
+               - ARROW_STRAIGHT
+               
+            type: array
+            examples:
+              - 
+                - 
+                  direction: LEFT
+                - 
+                  direction: RIGHT              
+            
+      PolygonLocation:
+        type: object
+        required:
+          - location
+        properties:
+          location:
+            type: object
+            required:
+              - coordinates
+              - coordinatesType
+            properties:
+              coordinates:
+                type: array
+                example:
+                  - latitude: 51.473873
+                    longitude: 5.660995
+                  - latitude: 51.47429
+                    longitude: 5.660995  
+                  - latitude: 51.47429
+                    longitude: 5.656649                    
+                  - latitude: 51.473873
+                    longitude: 5.656649
+                  - latitude: 51.473873
+                    longitude: 5.660995  
+              coordinatesType:
+                type: string
+                example: POLYGON     
+
+      EventInfo:
+        type: object
+        required:
+          - location
+          - staticEventMetadata
+        properties:
+          eventText:
+            description: Textual representation of ITSEventCode.
+            type: string
+            example: description of event
+          location:
+            description: Location of the object/event, compliant with EPSG 4326
+            allOf:
+              - $ref: "#/components/schemas/Location"
+          staticEventMetadata:
+            description: Contains other containers for static events.
+            allOf:
+              - $ref: "#/components/schemas/StaticEventMetadata"     
+          dynamicEventMetadata:
+            description: | 
+              Contains other containers for dynamic events
+              
+              Only for the following itsEventCodes:
+              - EMERGENCY_VEHICLE_APPROACHING
+              - ROAD_INSPECTOR
+              - GHOST_DRIVER_WARNING
+            allOf:
+              - $ref: "#/components/schemas/DynamicEventMetadata"          
+
+      ChangedFrequencyRequestMessage:
+        type: object
+        required:
+          - messageType
+          - container
+          - vehicleId
+        properties:
+          messageType:
+            type: text
+            example: EVENT_MESSAGE
+          vehicleId:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          container:
+            description: Message content
+            type: object
+            required:
+              - infoContainer
+              - contentContainer
+            properties:
+              infoContainer:
+                allOf:
+                  - $ref: "#/components/schemas/InfoContainer"
+                  - type: object   
+                    required: 
+                      - desiredInterval
+                    properties: 
+                      desiredInterval:
+                        type: int
+                        description: |
+                          the requested interval sampling rate of GPS samples in order to facilitate a usecase. Unit of value is second. If filled in, location container has to contain a polygon where the higher frequency is required
+                        example: 1  
+              contentContainer:
+                type: object   
+                properties:  
+                  itsEventCode:
+                    description: |   
+                      [ITSEventCode](#tag/Event-codes) is referring to the usecase at hand.
+                    type: string
+                    enum:
+                      - CHANGED_FREQUENCY_REQUEST                      
+                    example: CHANGED_FREQUENCY_REQUEST
+                  eventInfo:
+                    allOf:
+                      - $ref: "#/components/schemas/PolygonLocation" 
+      
+      MaximumSpeedEventMessage:
+        type: object
+        required:
+          - messageType
+          - container
+          - vehicleId
+        properties:
+          messageType:
+            type: text
+            example: EVENT_MESSAGE
+          vehicleId:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          container:
+            description: Message content
+            type: object
+            required:
+             - infoContainer
+             - contentContainer
+            properties:
+              infoContainer:
+                allOf:
+                  - $ref: "#/components/schemas/InfoContainerNoInterval"
+              contentContainer:
+                type: object   
+                properties:  
+                  itsEventCode:
+                    description: |   
+                      [ITSEventCode](#tag/Event-codes) is referring to the usecase at hand.
+                    type: string
+                    enum:
+                      -  MAXIMUM_SPEED   
+                    example: MAXIMUM_SPEED
+                  eventInfo:
+                    type: object
+                    properties:
+                      staticEventMetadata:
+                        type: object
+                        properties:
+                          speedInfo:
+                            allOf:
+                              - $ref: "#/components/schemas/SpeedInfo"                       
+
+      TrafficLightStatusEvent:
+        type: object
+        required:
+          - messageType
+          - container
+          - vehicleId
+        properties:
+          messageType:
+            type: text
+            example: EVENT_MESSAGE
+          vehicleId:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          container:
+            description: Message content
+            type: object
+            required:
+             - infoContainer
+             - contentContainer
+            properties:
+              infoContainer:
+                allOf:
+                  - $ref: "#/components/schemas/InfoContainerNoInterval"
+              contentContainer:
+                type: object   
+                properties:  
+                  itsEventCode:
+                    description: |   
+                      [ITSEventCode](#tag/Event-codes) is referring to the usecase at hand.
+                    type: string
+                    enum:
+                      - TRAFFIC_LIGHT_STATUS 
+                    example: TRAFFIC_LIGHT_STATUS
+                  eventInfo:
+                    type: object
+                    properties:
+                      eventText:
+                        type: text 
+                        example: Traffic Light Status 31396.531.A2.S3
+                      location:
+                        allOf:
+                          - $ref: "#/components/schemas/LocationPoint"
+                      staticEventMetadata:
+                        type: object
+                        properties:
+                          ivriContainer:
+                            type: object
+                            properties: 
+                              trafficLightStateInformation:
+                                allOf:
+                                  - $ref: "#/components/schemas/TrafficLightStateInformation"  
+                              laneInfo:
+                                description: |
+                                  CSP will send one event message per lane. When there are for example 3 lanes, you will receive three different EVENTS.
+                                allOf:
+                                  - $ref: "#/components/schemas/LaneInfo"
+
+      TrafficLightTimingEvent:
+        type: object
+        required:
+          - messageType
+          - container
+          - vehicleId
+        properties:
+          messageType:
+            type: text
+            example: EVENT_MESSAGE
+          vehicleId:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          container:
+            description: Message content
+            type: object
+            required:
+             - infoContainer
+             - contentContainer
+            properties:
+              infoContainer:
+                allOf:
+                  - $ref: "#/components/schemas/InfoContainerNoInterval"
+              contentContainer:
+                type: object   
+                properties:  
+                  itsEventCode:
+                    description: |   
+                      [ITSEventCode](#tag/Event-codes) is referring to the usecase at hand.
+                    type: string
+                    enum:
+                      - TRAFFIC_LIGHT_TIMING
+                    example: TRAFFIC_LIGHT_TIMING
+                  eventInfo:
+                    type: object
+                    properties:
+                      eventText:
+                        type: text 
+                        example: Traffic Light Timing 31396.531.A2.S3
+                      location:
+                        allOf:
+                          - $ref: "#/components/schemas/LocationPoint"
+                      staticEventMetadata:
+                        type: object
+                        properties:
+                          ivriContainer:
+                            type: object
+                            properties: 
+                              trafficLightTimingInformation:
+                                allOf:
+                                  - $ref: "#/components/schemas/TrafficLightTimingInformation"  
+                              laneInfo:
+                                description: |
+                                  CSP will send one event message per lane. When there are for example 3 lanes, you will receive three different events.
+                                allOf:
+                                  - $ref: "#/components/schemas/LaneInfo"
+                                         
+      PriorityStatusEvent:
+        type: object
+        required:
+          - messageType
+          - container
+          - vehicleId
+        properties:
+          messageType:
+            type: text
+            example: EVENT_MESSAGE
+          vehicleId:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          container:
+            description: Message content
+            type: object
+            required:
+             - infoContainer
+             - contentContainer
+            properties:
+              infoContainer:
+                allOf:
+                  - $ref: "#/components/schemas/InfoContainerNoInterval"
+              contentContainer:
+                type: object   
+                properties:  
+                  itsEventCode:
+                    description: |   
+                      [ITSEventCode](#tag/Event-codes) is referring to the usecase at hand.
+                    type: string
+                    enum:
+                      - PRIORITY  
+                    example: PRIORITY
+                  eventInfo:
+                    type: object
+                    properties:
+                      eventText:
+                        type: text
+                        example: Priority 31398.61
+                      location:
+                        allOf:
+                          - $ref: "#/components/schemas/LocationPoint"
+                      staticEventMetadata:
+                        type: object
+                        properties:
+                          ivriContainer:
+                            type: object
+                            properties:
+                              priorityContainer:
+                                type: object
+                                properties:
+                                  status:
+                                    allOf: 
+                                      - $ref: "#/components/schemas/PriorityStatus"
+                                    example: granted  
+                                                          
+      LaneConfigurationEvent:
+        type: object
+        required:
+          - messageType
+          - container
+          - vehicleId
+        properties:
+          messageType:
+            type: text
+            example: EVENT_MESSAGE
+          vehicleId:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          container:
+            description: Message content
+            type: object
+            required:
+             - infoContainer
+             - contentContainer
+            properties:
+              infoContainer:
+                allOf:
+                  - $ref: "#/components/schemas/InfoContainerNoInterval"
+              contentContainer:
+                type: object   
+                properties:  
+                  itsEventCode:
+                    description: |   
+                      [ITSEventCode](#tag/Event-codes) is referring to the usecase at hand.
+                    type: string  
+                    enum:
+                      - LANE_CONFIGURATION  
+                    example: LANE_CONFIGURATION
+                  eventInfo:
+                    type: object
+                    properties:
+                      eventText:
+                        type: text 
+                        example: Lane configuration
+                      location:
+                        allOf:
+                          - $ref: "#/components/schemas/LocationPoint"
+                      staticEventMetadata:
+                        type: object
+                        properties:
+                          roadConfiguration:
+                            type: object
+                            properties: 
+                              roadConfigStatus:
+                                allOf:
+                                  - $ref: "#/components/schemas/RoadConfigStatus"  
+                              roadConfigLocation:
+                                description: |
+                                  CSP will send one event message per lane. When there are for example 3 lanes, you will receive three different EVENTS.
+                                allOf:
+                                  - $ref: "#/components/schemas/RoadConfigLocation"
+                                  
+      TirePressureGaugeEvent:
+        type: object
+        required:
+          - messageType
+          - container
+          - vehicleId
+        properties:
+          messageType:
+            type: text
+            example: EVENT_MESSAGE
+          vehicleId:
+            allOf:
+              - $ref: "#/components/schemas/VehicleId"
+          container:
+            description: Message content
+            type: object
+            required:
+             - infoContainer
+             - contentContainer
+            properties:
+              infoContainer:
+                allOf:
+                  - $ref: "#/components/schemas/InfoContainerNoInterval"
+              contentContainer:
+                type: object   
+                properties:  
+                  itsEventCode:
+                    description: |   
+                      [ITSEventCode](#tag/Event-codes) is referring to the usecase at hand.
+                    type: string
+                    enum:
+                      - TIRE_PRESSURE_GAUGE  
+                    example: TIRE_PRESSURE_GAUGE
+                  eventInfo:
+                    type: object
+                    properties:
+                      eventText:
+                        type: text 
+                        example: Tire pressure information
+                      location:
+                        allOf:
+                          - $ref: "#/components/schemas/LocationPoint"
+                      staticEventMetadata:
+                        type: object
+                        properties:
+                          sensorInfo:
+                            type: object
+                            properties: 
+                              tirePressure:
+                                description: object containing information on tire pressures, itsEventCode TIRE_PRESSURE_GAUGE
+                                allOf:         
+                                  - $ref: "#/components/schemas/TirePressure"  
+                                                                                                                           
+    requestBodies:
+     
+      VehicleMessage:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - description: Demo truck
+                  title: Demo truck
+                - $ref: "#/components/schemas/Vehicle"
+        description: Vehicle object that needs to be announced to cloud service provider
+        required: true
+        
+      RouteMessage:      
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Route"        
+        required: true
+      
+      FmsItsMessage:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/FmsItsMessage"   
+                        
+      Container:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Container"                      
+      
+      InfoContainer:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/InfoContainer"        
+           
+      ContentContainer:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ContentContainer"
+         
+         
+         
+      TimeStampMessageRequest:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/TimeStampMessage"
+                
+      TimeStampMessageResponse:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/TimeStampMessageResponse"
+                
+      TimeStampMessageRequestExample:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/TimeStampMessageRequestExample"
+                
+      TimeStampMessageResponseExample:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/TimeStampMessageResponseExample"
+                                
+      
+      LocationUpdateEvent:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/LocationUpdateEvent"
+                
+      LocationUpdateExample:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/LocationUpdateExample"
+        description: |
+           Note: All communication through the websocket connection is done in protobuf, when serialized to JSON this is the default structure.
+           
+      ChangedFrequencyRequestMessage:
+        content:
+          application/json:
+            schema:
+              allOf:               
+                - $ref: "#/components/schemas/ChangedFrequencyRequestMessage"
+        description: |
+           Note: All communication through the websocket connection is done in protobuf, when serialized to JSON this is the default structure. 
+        
+      MaximumSpeedEventMessage:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/MaximumSpeedEventMessage"
+        description: |
+           Note: All communication through the websocket connection is done in protobuf, when serialized to JSON this is the default structure. 
+
+      TrafficLightStatusEvent:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/TrafficLightStatusEvent"
+        description: |
+           Note: All communication through the websocket connection is done in protobuf, when serialized to JSON this is the default structure. 
+      
+      TrafficLightTimingEvent:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/TrafficLightTimingEvent"
+        description: |
+           Note: All communication through the websocket connection is done in protobuf, when serialized to JSON this is the default structure. 
+      
+      PriorityStatusEvent:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/PriorityStatusEvent"
+        description: |
+           Note: All communication through the websocket connection is done in protobuf, when serialized to JSON this is the default structure. 
+      
+      
+      LaneConfigurationEvent:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/LaneConfigurationEvent"
+        description: |
+           Note: All communication through the websocket connection is done in protobuf, when serialized to JSON this is the default structure. 
+      
+      TirePressureGaugeEvent:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/TirePressureGaugeEvent"
+        description: |
+           Note: All communication through the websocket connection is done in protobuf, when serialized to JSON this is the default structure. 
+      
+            
+      ErrorMessage:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ErrorMessage"
+        description: |
+          Note: All communication through the websocket connection is done in protobuf, when serialized to JSON this is the default structure. 
+      
+              
+      ErrorMessageTimesync:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ErrorMessageTimesync"    
+        description: |
+          Note: All communication through the websocket connection is done in protobuf, when serialized to JSON this is the default structure. 
+          
+      ErrorMessageLocation:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ErrorMessageLocation"    
+        description: |
+          Note: All communication through the websocket connection is done in protobuf, when serialized to JSON this is the default structure.
+                  
