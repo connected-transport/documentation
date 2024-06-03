@@ -76,7 +76,9 @@ info:
         - OTM = Open Trip Model
         - REST = Representational state transfer
         - UDAP = Urban Data Access Platform
-                       
+                       servers:
+servers: 
+  - url: "https://movingit.eu/ctc"
 tags:
   - name: High level architecture
     x-displayName: High level architecture
@@ -533,6 +535,7 @@ paths:
           url: https://otm5.opentripmodel.org/#tag/Vehicle
       description: |
          Announce an truck that is going to connect to the cloud service provider. This has to be done at least every 24 hours.
+      operationId: putVehicle    
       responses:
         "200":
           description: OK (output body is copy input json)
@@ -570,12 +573,14 @@ paths:
         When startTime and EndTime are defined, the route is only active between these times. 
            
         The cleaning frequency can be different for ITS Cloud Service Provider. With a minimum frequency of once per 24 hour.         
+      operationId: putRoute
       responses:
+        "200":
+          description: OK (output body is copy input json)
         "400":
           description: Bad request
       requestBody:
         $ref: "#/components/requestBodies/RouteMessage"
-
 
    /routes/{RouteId}:
     delete:
@@ -590,6 +595,7 @@ paths:
           required: true
           schema:
             type: string
+      operationId: deleteRoute      
       responses:
         "204":
           description: Deleted route with the provided UUID
@@ -601,28 +607,28 @@ paths:
    /protobuf_message:
     get:
       parameters:
-      - name: Content-Type
-        in: header
-        description: |
-          Protobuf over websocket connection
-        example: application/proto
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection
+          example: application/proto
       tags:
         - FmsItsMessage
       summary: Generic message structure 
       description: | 
         Generic [ITS-FMS Interface message structure](#tag/The-WebSocket-interface-with-Protobuf-messages/General-Protobuf-model).           
+      operationId: getFmsItsMessage
       requestBody:
         $ref: "#/components/requestBodies/FmsItsMessage"
    
    /protobuf_container:
     get:
       parameters:
-      - name: Content-Type
-        in: header
-        description: | 
-          Protobuf over websocket connection          
-        example: application/proto
-        
+        - name: Content-Type
+          in: header
+          description: | 
+            Protobuf over websocket connection          
+          example: application/proto
       tags:
         - FmsItsMessage
       summary: Container element 
@@ -636,40 +642,40 @@ paths:
           - ERROR_MESSAGE: an Errormessage
           
         Note: All communication through the websocket connection is done in protobuf, when serialized to JSON this is the default structure.   
+      operationId: getContainer
       requestBody:
         $ref: "#/components/requestBodies/Container"
         
    /protobuf_info_container:
     get:
       parameters:
-      - name: Content-Type
-        in: header
-        description: | 
-          Protobuf over websocket connection          
-        example: application/proto
-        
+        - name: Content-Type
+          in: header
+          description: | 
+            Protobuf over websocket connection          
+          example: application/proto        
       tags:
         - FmsItsMessage
       summary: Info container element
       description: |
            General information about the message not related to the event itself.
-           
+      operationId: getInfoContainer     
       requestBody:
         $ref: "#/components/requestBodies/InfoContainer"
 
    /protobuf_content_container:
     get:
       parameters:
-      - name: Content-Type
-        in: header
-        description: Protobuf over websocket connection
-        example: application/proto
-        
+        - name: Content-Type
+          in: header
+          description: Protobuf over websocket connection
+          example: application/proto      
       tags:
         - FmsItsMessage
       summary: Content container element
       description: |
-        Depending on the message type the container has different contents          
+        Depending on the message type the container has different contents
+      operationId: getContentContainer            
       requestBody:
         $ref: "#/components/requestBodies/ContentContainer"     
   
@@ -687,6 +693,7 @@ paths:
         
         The FMS-party should respond with a timestamp response message as quickly as possible. 
         If the average time difference between an FMS and CSP consistently exceeds 3 seconds (or no response is received within 3 seconds), the CSP will send an error message.
+      operationId: getTimeStampMessageRequest
       requestBody:
         $ref: "#/components/requestBodies/TimeStampMessageRequest"
     put:
@@ -702,6 +709,7 @@ paths:
         
         The FMS-party should respond with a timestamp response message as quickly as possible. 
         If the average time difference between an FMS and CSP consistently exceeds 3 seconds (or no response is received within 3 seconds), the CSP will send an error message.         
+      operationId: putTimeStampMessageResponse
       requestBody:
         $ref: "#/components/requestBodies/TimeStampMessageResponse"
 
@@ -710,12 +718,14 @@ paths:
       tags:
         - TimestampMessageExample
       summary: Timestamp message request
+      operationId: getTimeStampMessageRequestExample
       requestBody:
         $ref: "#/components/requestBodies/TimeStampMessageRequestExample"
     put:
       tags:
         - TimestampMessageExample
       summary: Timestamp message response
+      operationId: putTimeStampMessageResponseExample
       requestBody:
         $ref: "#/components/requestBodies/TimeStampMessageResponseExample"
                       
@@ -2117,36 +2127,6 @@ components:
                     type: string
                     example: Last location update received after 2.5134287 seconds at 2023-03-08T21:22:25.9213817Z, expected every 1 seconds
              
-      TimeUnit:
-        type: object
-        required:
-          - value
-          - unit
-        properties:  
-          unit:
-             type: string
-             enum:
-               - MILLISECOND        
-               - MINUTE
-               - HOUR        
-               - DEGREES
-          value:
-             type: string
-             
-      MassUnit:
-        type: object
-        required:
-          - value
-          - unit
-        properties:  
-          unit:
-             type: string
-             enum:
-               - KILOGRAM        
-               - POUND
-          value:
-             type: string
-            
       EventMessage:
         description: A JSON representation of an protobuf event message
         allOf:
