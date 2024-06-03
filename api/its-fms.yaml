@@ -137,7 +137,7 @@ tags:
       - Step 5: Respond in time on timstamp requests to keep connection open and keep sending location updates conform requirements
       - Step 6: Receive realtime event messages, from CSP and implement this in your application   
         
-    Note: If no activity is detected on an open WebSocket during 5 minutes, the CSP will close the connection.
+      Note: If no activity is detected on an open WebSocket during 5 minutes, the CSP will close the connection.
   
   - name: Event codes
     x-displayName: Event codes
@@ -465,8 +465,8 @@ tags:
        - responseTransmission (filled when the response is transmitted by the FMS)
   - name: EventMessage       
     x-displayName: Event messages
-  - name: ErrorMessage       
-    x-displayName: Error messages       
+    description: |
+      Event messages come from CSP and are destinated to an truck  
                                   
 x-tagGroups:
    - name: About this API
@@ -971,7 +971,7 @@ components:
               - taxi
             example: truck
           fuel:
-            type: string,
+            type: string
             enum: 
               - petrol
               - diesel 
@@ -1224,7 +1224,7 @@ components:
           - TIMEDIFF_TOO_BIG            // difference between clocks of FMS and CSP is too big
           - INVALID_PROTO               // proto message could not be decoded
   
-        type: string,
+        type: string
         enum:
           - ERRORTYPE_UNKNOWN
           - MISSING_FIELD
@@ -1288,7 +1288,7 @@ components:
           
           Heading units:
           - DEGREES
-        type: string,
+        type: string
         enum:
           - KILOMETERS_PER_HOUR
           - METERS_PER_SECOND
@@ -1334,7 +1334,7 @@ components:
             allOf:
               - $ref: "#/components/schemas/EventId"            
           messageType:
-            type: string,
+            type: string
             enum:
             - NEW
             - UPDATE
@@ -1345,7 +1345,7 @@ components:
               - DELETE: for canceling or informing the event is not applicable anymore
             example: NEW   
           eventVersion: 
-            type: int
+            type: integer
             description: |
               the message counter for this specific event (for NEW always 1, UPDATES and DELETES will have an increasing number)
             example: 1 
@@ -1353,7 +1353,7 @@ components:
             type: timestamp
             example: 2024-03-08T21:08:22.329080800Z
           desiredInterval:
-            type: int
+            type: integer
             description: |
               In regular operation, the FMS party will need to provide a locationUpdateEvent at least once every 5 seconds (0.2 Hz) for each individual (active) vehicle. Based on this location, the CSP backend will subsequently check for new, updated or deleted events for this new location and vehicle. If so, the updates will be sent over the already established WebSocket. Next to this, the CSP backend will also check if the vehicle has entered or left a ‘high position rate zone’ after which the CSP backend will optionally send a high position rate control message (changedFrequencyRequest)
             
@@ -1377,7 +1377,7 @@ components:
             allOf:
               - $ref: "#/components/schemas/EventId"            
           messageType:
-            type: string,
+            type: string
             enum:
             - NEW
             - UPDATE
@@ -1388,7 +1388,7 @@ components:
               - DELETE: for canceling or informing the event is not applicable anymore
             example: NEW   
           eventVersion: 
-            type: int
+            type: integer
             description: |
               the message counter for this specific event (for NEW always 1, UPDATES and DELETES will have an increasing number)
             example: 1 
@@ -1606,7 +1606,7 @@ components:
           - speedLimitUnit
         properties:
           maximumSpeedLimit:
-            type: int
+            type: integer
             example: 70
           speedLimitUnit:
             oneOf:
@@ -1639,7 +1639,7 @@ components:
           currentState:
             description: |
               current state of traffic light at lane specified in laneInfo
-            type: string,
+            type: string
             enum:
               - UNKNOWN_TRAFFIC_LIGHT_STATE
               - RED
@@ -1659,7 +1659,7 @@ components:
                - ARROW_LEFT
                - ARROW_RIGHT
                - ARROW_STRAIGHT
-            type: string,
+            type: string
             enum:
               - UNKNOWN_ARROW
               - ARROW_NONE
@@ -1674,7 +1674,7 @@ components:
               Options:
                - Protected = obligation to show arrow 
                - Permissive = round dot
-            type: string,
+            type: string
             enum:
               - UNKNOWN_MOVEMENT
               - PROTECTED
@@ -1730,7 +1730,7 @@ components:
              boolean value indicating whether the road user should always give priority to intersecting traffic (cfr. orange flashing light)            
               
       Direction:
-        type: string,
+        type: string
         enum:
           - UNKNOWN_DIRECTION 
           - STRAIGHT
@@ -1766,7 +1766,7 @@ components:
               OK = 1;              // OK: all tires seem to be OK
               NOK_SUSPECT = 2;     // Not OK: at least one tire is suspect and none seem to be flat
               NOK_FLAT = 3;        // Not OK: at least one tire seems to be flat
-            type: string,
+            type: string
             enum:
               - UNKNOWN_STATUS 
               - OK
@@ -1774,12 +1774,12 @@ components:
               - NOK_FLAT
             example: NOK_SUSPECT  
           axleCount:
-            desription: | 
+            description: | 
               integer indicating total number of axles of the vehicle
-            type: int
+            type: integer
             example: 2
           anomalies:
-            desription: | 
+            description: | 
               object containing detailed information on pressure of every tire that is not OK
             type: array
             items:
@@ -1794,14 +1794,14 @@ components:
               indicating axle, counting starts from front of vehicle
             example: 2  
           side:
-            type: string,
+            type: string
             enum:
               - UNKNOWN_SIDE
               - LEFT
               - RIGHT
             example: LEFT  
           measurement:
-            type: string,
+            type: string
             enum:
               - UNKNOWN_STATUS
               - FLAT
@@ -1812,7 +1812,7 @@ components:
          properties:
            axleCount:
              description: integer indicating total number of axles of the vehicle
-             type: int
+             type: integer
            weightMeasurements:
              type: array
              items:
@@ -1824,7 +1824,7 @@ components:
         properties:
            axle:
              description: indicating axle, counting starts from top of vehicle
-             type: int
+             type: integer
            weight:
              allOf:
                - $ref: "#/components/schemas/MeasurementType"  
@@ -1901,7 +1901,7 @@ components:
       
       LifeCycle:
         description: in this interface only actual updates are allowed
-        type: string,
+        type: string
         enum:
           - LIFECYCLE_UNKNOWN
           - ACTUAL
@@ -1940,7 +1940,7 @@ components:
               unit:
                 example: KILOMETERS_PER_HOUR
               value: 
-                type: int
+                type: integer
                 example: 80
       
       HeadingUnit:
@@ -1951,11 +1951,11 @@ components:
               unit:
                 example: DEGREES
               value:
-                type: int 
+                type: integer
                 example: 45
      
       ItsEventCode:
-        type: string,
+        type: string
         enum:
           - UNKNOWN_ITS_EVENT_CODE
           - CHANGED_FREQUENCY_REQUEST
@@ -2124,7 +2124,7 @@ components:
           - unit
         properties:  
           unit:
-             type: string,
+             type: string
              enum:
                - MILLISECOND        
                - MINUTE
@@ -2140,7 +2140,7 @@ components:
           - unit
         properties:  
           unit:
-             type: string,
+             type: string
              enum:
                - KILOGRAM        
                - POUND
@@ -2205,7 +2205,7 @@ components:
             allOf:
               - $ref: "#/components/schemas/Maneuver"            
           laneId:
-            type: int
+            type: integer
             example: 1   
            
       LocationPoint:
@@ -2232,12 +2232,12 @@ components:
           maxLaneId:
             description: |
               Number of lanes
-            type: int
+            type: integer
             example: 3
           laneId:
             description: |
                For lane indication, the lane number is counted left to right. 
-            type: int
+            type: integer
             example: 2            
           maneuvers:
             description: |
@@ -2343,7 +2343,7 @@ components:
                       - desiredInterval
                     properties: 
                       desiredInterval:
-                        type: int
+                        type: integer
                         description: |
                           the requested interval sampling rate of GPS samples in order to facilitate a usecase. Unit of value is second. If filled in, location container has to contain a polygon where the higher frequency is required
                         example: 1  
