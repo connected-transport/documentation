@@ -25,7 +25,7 @@ info:
         - Information provision from intelligent traffic light controllers (iTLC, Dutch: “iVRI”)
         - Priority allocation by iTLC’s;
         - Provisioning of information from variable message signs above the road;
-        - ...
+        - ... (list of availabale use cases will increase over time) 
                                 
        This set of applications is characterized by low-latency services that make use of cellular communication services. They are called ITS (intelligent transport systems) services within this context and form the scope of what is specified in this document.
    
