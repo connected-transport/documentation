@@ -694,6 +694,15 @@ paths:
   
    /protobuf_timestamp_message:
     get:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - FmsItsMessage
         - TimestampRequestMessage
@@ -710,6 +719,15 @@ paths:
       requestBody:
         $ref: "#/components/requestBodies/TimeStampMessageRequest"
     put:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - FmsItsMessage
         - TimestampUpdateMessage
@@ -728,6 +746,15 @@ paths:
 
    /protobuf_timestamp_message_example:
     get:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - TimestampMessageExample
       summary: Timestamp message request
@@ -735,6 +762,15 @@ paths:
       requestBody:
         $ref: "#/components/requestBodies/TimeStampMessageRequestExample"
     put:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - TimestampMessageExample
       summary: Timestamp message response
@@ -744,6 +780,15 @@ paths:
                       
    /protobuf_location_update_event:
     put:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - FmsItsMessage
       description: |
@@ -760,6 +805,15 @@ paths:
  
    /protobuf_location_update_example:
     put:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - LocationUpdateExample
       description: |
@@ -771,6 +825,15 @@ paths:
         
    /protobuf_error_message:
     get:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - FmsItsMessage
       summary: |
@@ -783,6 +846,15 @@ paths:
 
    /protobuf_error_message_timestamp:
     get:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - ErrorMessage
       summary: |
@@ -797,6 +869,15 @@ paths:
 
    /protobuf_error_message_location:
     get:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - ErrorMessage
       summary: |
@@ -812,6 +893,15 @@ paths:
                 
    /protobuf_changed_frequency_request_message:
     get:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - EventMessage
       summary: Change location update frequency request from CSP
@@ -828,6 +918,15 @@ paths:
 
    /protobuf_lane_configuration_event:
     get:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - EventMessage
       summary: Lane configuration
@@ -838,6 +937,15 @@ paths:
                 
    /protobuf_maximum_speed_event:
     get:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - EventMessage
       summary: Change maximum speed limit for current road
@@ -850,6 +958,15 @@ paths:
         
    /protobuf_traffic_light_status_event:
     get:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - EventMessage
       summary: Traffic light status
@@ -859,6 +976,15 @@ paths:
 
    /protobuf_traffic_light_timing_event:
     get:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - EventMessage
       summary: Traffic light timing
@@ -869,6 +995,15 @@ paths:
         
    /protobuf_priority_status_event:
     get:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - EventMessage
       summary: Priority request status
@@ -878,6 +1013,15 @@ paths:
               
    /protobuf_sensor_tirepressure_event:
     get:
+      parameters:
+        - name: Content-Type
+          in: header
+          description: |
+            Protobuf over websocket connection          
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - EventMessage
       summary: Tire pressure information
@@ -891,9 +1035,6 @@ paths:
           
       requestBody:
         $ref: "#/components/requestBodies/TirePressureGaugeEvent"    
-              
-
-                                                    
                  
 components:
     schemas:
@@ -1264,7 +1405,8 @@ components:
           - requestTransmission
         properties:
           requestTransmission:
-            type: timestamp
+            type: string
+            format: date-time
             example: 2024-03-08T21:08:22.329080800Z
       
       TimeStampMessageResponse:
@@ -1279,12 +1421,14 @@ components:
               requestReception:
                 description: |
                   Note: Only required in TimestampResponse message
-                type: timestamp
+                type: string
+                format: date-time
                 example: 2024-03-08T21:08:22.339080800Z
               responseTransmission:
                 description: |
                   Note: Only required in TimestampResponse message
-                type: timestamp
+                type: string
+                format: date-time
                 example: 2024-03-08T21:08:22.339090800Z
                                         
       MeasurementUnit:
@@ -1373,7 +1517,8 @@ components:
               the message counter for this specific event (for NEW always 1, UPDATES and DELETES will have an increasing number)
             example: 1 
           creationTime:
-            type: timestamp
+            type: string
+            format: date-time
             example: 2024-03-08T21:08:22.329080800Z
           desiredInterval:
             type: integer
@@ -1416,7 +1561,8 @@ components:
               the message counter for this specific event (for NEW always 1, UPDATES and DELETES will have an increasing number)
             example: 1 
           creationTime:
-            type: timestamp
+            type: string
+            format: date-time
             example: 2024-03-08T21:08:22.329080800Z
               
       ContentContainer:
@@ -1712,17 +1858,20 @@ components:
           minEndTime:
             description: |
               The element minEndTime is used to convey the earliest time possible at which the phase could change, except when unpredictable events relating to a pre-emption or priority call disrupt a currently active timing plan. (UTC+00:00).
-            type: timestamp
+            type: string
+            format: date-time
             example: 2024-03-08T09:00:43.329080800Z
           maxEndTime:
             description: |
               The element MaxEndTime is used to convey the latest time possible which the phase could change, except when unpredictable events relating to a pre-emption or priority call come into play and disrupt a currently active timing plan. (UTC+00:00).
-            type: timestamp
+            type: string
+            format: date-time
             example: 2024-03-08T09:02:23.329080800Z
           likelyTime:
             description: |
               The element likelyTime is used to convey the most likely time the phase changes. This occurs between MinEndTime and MaxEndTime and is only relevant for traffic-actuated control programs. (UTC+00:00).
-            type: timestamp
+            type: string
+            format: date-time
             example: 2024-03-08T09:01:02.329080800Z
               
       TrafficLightSpeedAdvice:
@@ -1875,7 +2024,8 @@ components:
             allOf:
               - $ref: "#/components/schemas/EventId"      
           creationDate:
-            type: timestamp
+            type: string
+            format: date-time
             example: 2024-03-08T21:08:22.329080800Z
           geoReference:
             allOf:
@@ -1890,7 +2040,8 @@ components:
             allOf:
               - $ref: "#/components/schemas/LifeCycle"
           deviceDate:
-            type: timestamp
+            type: string
+            format: date-time
             example: 2024-03-08T21:08:22.329080800Z
             description: | 
               Optional timestamp when the position update was received on the FMS device and can be used when the GPS fix seems to be far of the NTP time.
