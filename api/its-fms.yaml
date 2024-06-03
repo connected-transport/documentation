@@ -612,6 +612,9 @@ paths:
           description: |
             Protobuf over websocket connection
           example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - FmsItsMessage
       summary: Generic message structure 
@@ -626,9 +629,12 @@ paths:
       parameters:
         - name: Content-Type
           in: header
-          description: | 
+          description: |
             Protobuf over websocket connection          
           example: application/proto
+          schema:
+            type: string
+            default: application/proto
       tags:
         - FmsItsMessage
       summary: Container element 
@@ -651,14 +657,17 @@ paths:
       parameters:
         - name: Content-Type
           in: header
-          description: | 
+          description: |
             Protobuf over websocket connection          
-          example: application/proto        
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto        
       tags:
         - FmsItsMessage
       summary: Info container element
       description: |
-           General information about the message not related to the event itself.
+        General information about the message not related to the event itself.
       operationId: getInfoContainer     
       requestBody:
         $ref: "#/components/requestBodies/InfoContainer"
@@ -668,8 +677,12 @@ paths:
       parameters:
         - name: Content-Type
           in: header
-          description: Protobuf over websocket connection
-          example: application/proto      
+          description: |
+            Protobuf over websocket connection         
+          example: application/proto
+          schema:
+            type: string
+            default: application/proto      
       tags:
         - FmsItsMessage
       summary: Content container element
