@@ -11,6 +11,6 @@ Alternatively, you can open `index.html` in your browser to view the documentati
 ## Repository Contents
 
 This repository contains:
-- `api/its-fms.yaml` - OpenAPI 3.1.0 specification of the ITS-FMS Interface
+- `api/its-fms.yaml` - OpenAPI 3.1.0 specification of the ITS-FMS Interface version 2.1.0
 - `assets/` - Diagrams and images used in the documentation
 - `index.html` - Local Redocly viewer
