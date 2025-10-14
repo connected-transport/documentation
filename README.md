@@ -6,6 +6,11 @@ The ITS-FMS Interface is defined as an standard for communication between logist
 
 **[View Interactive API Documentation →](https://redocly.github.io/redoc/?url=https://raw.githubusercontent.com/connected-transport/documentation/main/api/its-fms.yaml)**
 
+> **Note:** If images don't load immediately after updates, wait 5 minutes for GitHub's cache to refresh, or try:
+> - Opening the link in an incognito/private window
+> - Hard refreshing the page (Ctrl+F5 or Cmd+Shift+R)
+> - Adding `?nocache=[timestamp]` to the URL
+
 Alternatively, you can open `index.html` in your browser to view the documentation locally.
 
 ## Repository Contents
