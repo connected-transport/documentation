@@ -6,7 +6,7 @@ info:
       email: support@movingit.nl
     version: 2.1.0
     description: |
-       ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/intro.png)
+       ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/intro.png)
        
        # Introduction
        The ITS-FMS Interface is defined as an standard for communication between logistic IT-suppliers (FMS) wanting to integrate Intelligent Transport Systemsservices and ITS cloud service providers (CSP) that offer the required services. 
@@ -84,13 +84,13 @@ tags:
     x-displayName: High level architecture
     description: |
       In the diagram below, a high-level architecture can be found between the ITS Cloud Service Providers and FMS-providers:
-      ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/figure_1.png)       
+      ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/figure_1.png)       
       _Figure 1: High Level architecture of CSP and FMS ecosystem – the ITS-FMS interface is situated between Cloud Service Provider and the Fleet Management System as information providers (indicated by a red dashed circle)_
        
       To implement the various use cases both some static and dynamic data is needed. For the static data (vehicle and route) an Open Trip Model (see details in 3.2) specification over a REST interface is used. However, for the dynamic data (ITS events, positions, control messages) it was deemed that the OTM definition was not suitable. For the dynamic data, WebSockets are used over which Google Protocol Buffer messages (proto3) are exchanged.
       When implementing this ITS-FMS interface, the CSP will be setting up endpoints for both types of connections.
        
-      ![Figure2](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/figure_2.png)       
+      ![Figure2](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/figure_2.png)       
       _Figure 2: 2 Interface implementation options: 1 via FMS backend (upper image), 2. directly from the FMS onboard unit (middle image), 3. hybrid (lower image)_
        
       For the FMS-systems, there are various implementation options:
@@ -330,7 +330,7 @@ tags:
       # General Protobuf model
       For the WebSocket interface the proto3 standard is used. The chosen message structure basically consists of a wrapper identifying the message type, the ID of the related vehicle and the actual content. The basic structure is depicted in Figure 3. Depending on the type of event message, one or more (sub)containers will be filled, which is documented in the Protobuf specification.
       
-      ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/figure_3.png)       
+      ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/figure_3.png)       
       _Figure 3 General Protobuf structure_
       
       Note the above classes diagram can be automatically generated with the Protobuf schema in an integrated development environment (IDE). Additional information about a certain message (such as whether fields within the messages are integers, strings, floats, etc.) can be shown, by extending or collapsing information. 
@@ -350,21 +350,21 @@ tags:
    
       For both a request and response a similar timestamp message is used, only the number of fields that are filled differ. A timestamp message contains the following fields: requestTransmission (filled by the requesting CSP), requestReception (filled upon receipt of the request by the FMS) and responseTransmission (filled when the response is transmitted by the FMS).
     
-      ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/figure_4_1.png)       
+      ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/figure_4_1.png)       
       _Figure 4.1 Example of a TimestampMessage response (after conversion to json)_
     
-      ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/figure_4_2.png)       
+      ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/figure_4_2.png)       
       _Figure 4.2 TimestampMessage flow_
       
   - name: FMS connecting with CSP for first time
     x-displayName: FMS connecting with CSP for first time
     description: |
-      ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/figure_5_1.png)       
+      ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/figure_5_1.png)       
       _Figure 5.1 FMS connecting with CSP for first time_
        
       Upon connection from an FMS to a CSP, the vehicle info needs to be injected into the CSP database. An example of such a body (conforming to the specs in paragraph 3.2) is provided in Figure 5.
       
-      ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/figure_5_2.png)       
+      ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/figure_5_2.png)       
       _Figure 5.2 Example body for the definition of a vehicle_
       
       In case priority use cases are desired, it is also mandatory to provide route information before the actual trip is started. Also, for other use cases the route information can make it possible to provide information at an earlier stage, so in general it is advised to provide this information when possible.
@@ -374,12 +374,12 @@ tags:
     description: |
       Once the vehicle, route information is injected, the FMS should open a WebSocket connection and start sending LocationUpdateEvents to receive location-based events. The next sequence diagram indicates the regular flow for location-based events, in case of position-driven event matching.  
       
-      ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/figure_5_3.png)       
+      ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/figure_5_3.png)       
       _Figure 5.3 Regular position flow – position driven_
       
       In case of event driving matching, events are matched based on the last known (or calculated position), resulting in the following flow
       
-      ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/figure_5_4.png)       
+      ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/figure_5_4.png)       
       _Figure 5.4 Regular position flow – event driven_
       
       In regular operation, the FMS party will need to provide a locationUpdateEvent at least once every 5 seconds (0.2 Hz) for each individual (active) vehicle. Based on this location, the CSP backend will subsequently check for new, updated or deleted events for this new location and vehicle. If so, the updates will be sent over the already established WebSocket. 
@@ -390,7 +390,7 @@ tags:
     description: |
       Every time a OBU characteristic changes, the FMS needs to evaluate if iVRI priority service is still or no longer applicable. If there is a change in state, the FMS needs to provide this change through a OTM event to the CSP. Once the CSP has correctly processed this priority state change, it will return with an OK/NOK http status code to indicate if the property change has been successfully processed.
       
-      ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/figure_5_5.png)       
+      ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/figure_5_5.png)       
       _Figure 5.5 Priority characteristics changed_
 
   - name: iVRI priority flow
@@ -400,7 +400,7 @@ tags:
       In order to support iVRI priority for logistics, the current active route for each truck needs to be known. If not, no directionality info can be given to the iVRIs and no priority will be granted to the truck. A vehicle should therefore always have a correct route assigned which should always be followed by the driver. 
       In case of route diversion, the priority use-case might not work. In this situation, the CSP backend can send extra control messages to indicate a detection of deviation which will be explained in the next section 
 
-      ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/figure_5_6.png)       
+      ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/figure_5_6.png)       
       _Figure 5.6 iVRI priority flow_
       
   - name: Unhappy flows 
@@ -414,10 +414,10 @@ tags:
 
       The CSP can also recalculate the route automatically after x seconds or minutes. There are no requirements for this interval as it is seen as an CSP specific service.
 
-      ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/figure_5_7.png)       
+      ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/figure_5_7.png)       
       _Figure 5.7 Route Tracking Failed flow_
       
-       ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/table_4.png)       
+       ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/table_4.png)       
       
       # Unhappy flow - Disconnect
       In case of a disconnection, a reestablishment of the connection must be executed by using the sequence diagrams of the[Regular position flow}(#tags/Regular-position-flow). 
@@ -428,7 +428,7 @@ tags:
   - name: Clock synchronisation
     x-displayName: Clock synchronisation 
     description: |
-      ![Figure1](https://raw.githubusercontent.com/connected-transport/documentation/main/assets/figure_6.png)       
+      ![Figure1](https://cdn.jsdelivr.net/gh/connected-transport/documentation@main/assets/figure_6.png)       
       _Figure 6 Clock synchronisation flow_
       
                           

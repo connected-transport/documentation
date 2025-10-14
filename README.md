@@ -6,8 +6,6 @@ The ITS-FMS Interface is defined as an standard for communication between logist
 
 **[View Interactive API Documentation →](https://redocly.github.io/redoc/?url=https://raw.githubusercontent.com/connected-transport/documentation/main/api/its-fms.yaml)**
 
-> **Note:** To view images in the Redocly viewer, make sure the **"CORS proxy"** toggle at the top of the page is **OFF** (unchecked).
-
 Alternatively, you can open `index.html` in your browser to view the documentation locally.
 
 ## Repository Contents
